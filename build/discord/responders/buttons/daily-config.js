@@ -37,7 +37,8 @@ createResponder({
     const modal = new ModalBuilder().setCustomId("daily-config/start-day-modal").setTitle("Configurar Dia Inicial").addComponents(
       new TextInputBuilder().setCustomId("start-day").setLabel("Dia").setStyle(TextInputStyle.Short).setValue(String(config?.startDay || 1)).setRequired(true),
       new TextInputBuilder().setCustomId("start-month").setLabel("M\xEAs").setStyle(TextInputStyle.Short).setValue(String(config?.startMonth || 1)).setRequired(true),
-      new TextInputBuilder().setCustomId("day-multiplier").setLabel("Multiplicador (1-3)").setStyle(TextInputStyle.Short).setValue(String(config?.dayMultiplier || 2)).setRequired(true)
+      new TextInputBuilder().setCustomId("start-year").setLabel("Ano").setStyle(TextInputStyle.Short).setValue(String(config?.startYear || 2024)).setRequired(true),
+      new TextInputBuilder().setCustomId("day-multiplier").setLabel("Dias reais = 1 dia jogo").setStyle(TextInputStyle.Short).setValue(String(config?.dayMultiplier || 1)).setRequired(true)
     );
     await interaction.showModal(modal);
   }
@@ -52,14 +53,23 @@ createResponder({
       if (!guild) return;
       const day = parseInt(interaction.fields.getTextInputValue("start-day"), 10);
       const month = parseInt(interaction.fields.getTextInputValue("start-month"), 10);
+      const year = parseInt(interaction.fields.getTextInputValue("start-year"), 10);
       const multiplier = parseInt(interaction.fields.getTextInputValue("day-multiplier"), 10);
+      if (isNaN(year) || year < 2e3 || year > 2100) {
+        await interaction.reply({
+          content: "\u274C Ano inv\xE1lido. Use um ano entre 2000 e 2100.",
+          flags: ["Ephemeral"]
+        });
+        return;
+      }
       setDailyEmbedConfig(guild.id, {
         startDay: Math.min(31, Math.max(1, day)),
         startMonth: Math.min(12, Math.max(1, month)),
+        startYear: year,
         dayMultiplier: Math.min(3, Math.max(1, multiplier))
       });
       await interaction.reply({
-        content: "\u2705 Dia inicial configurado com sucesso!",
+        content: `\u2705 Dia inicial configurado: ${day}/${month}/${year} (1 dia jogo = ${multiplier} dias real)!`,
         flags: ["Ephemeral"]
       });
     } catch (error) {
