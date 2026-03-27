@@ -1,7 +1,15 @@
 import { createCommand } from "#base";
 import { getDailyEmbedConfig } from "#config";
 import { buildDailyEmbed, createDailyEmbed, weatherSystem } from "#functions";
-import { ApplicationCommandType, TextChannel } from "discord.js";
+import { ApplicationCommandType, GuildMember, TextChannel } from "discord.js";
+
+async function isModerator(member: GuildMember): Promise<boolean> {
+  if (!member.permissions) return false;
+  return (
+    member.permissions.has("ManageGuild") ||
+    member.permissions.has("ModerateMembers")
+  );
+}
 
 createCommand({
   name: "simulate-embed",
@@ -9,6 +17,8 @@ createCommand({
   type: ApplicationCommandType.ChatInput,
   async run(interaction) {
     const guild = interaction.guild;
+    const member = interaction.member;
+
     if (!guild) {
       await interaction.reply({
         content: "Este comando só pode ser usado em um servidor.",
@@ -31,6 +41,16 @@ createCommand({
     if (!channel || !(channel instanceof TextChannel)) {
       await interaction.reply({
         content: "❌ Canal não encontrado ou não é um canal de texto.",
+        flags: ["Ephemeral"],
+      });
+      return;
+    }
+
+    const isMod = await isModerator(member);
+
+    if (!isMod) {
+      await interaction.reply({
+        content: "❌ Você precisa ser moderador para usar este comando.",
         flags: ["Ephemeral"],
       });
       return;
