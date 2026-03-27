@@ -2,12 +2,15 @@
   "1283753867724591166": {
     "guildId": "1283753867724591166",
     "timelineChannel": "1283769948610629722",
-    "chatCategories": [
-      "1283754259699077191"
-    ],
-    "verifiedUsers": [
-      "@allhailtheking01"
-    ],
+    "chatCategories": ["1283754259699077191"],
+    "verifiedUsers": ["@allhailtheking01"],
     "updatedAt": "2026-03-10T18:09:33.339Z"
+  },
+  "1477845514572529737": {
+    "guildId": "1477845514572529737",
+    "timelineChannel": "1480242579122553005",
+    "chatCategories": ["1480260765272379583"],
+    "verifiedUsers": [],
+    "updatedAt": "2026-03-24T01:36:56.410Z"
   }
 }

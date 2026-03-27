@@ -1,0 +1,217 @@
+import { dailyEmbedConfig, weatherState } from "#database";
+
+export type WeatherType = "sun" | "rain" | "snow" | "fog";
+
+export interface WeatherWeights {
+  sun: number;
+  rain: number;
+  fog: number;
+  snow: number;
+}
+
+export interface TemperatureRange {
+  min: number;
+  max: number;
+}
+
+const DEFAULT_WEIGHTS: WeatherWeights = {
+  sun: 40,
+  rain: 30,
+  fog: 20,
+  snow: 10,
+};
+const DEFAULT_TEMPERATURE: TemperatureRange = { min: 15, max: 25 };
+
+const weatherDictionary: Record<WeatherType, string> = {
+  sun: "Normal",
+  snow: "Nevando",
+  fog: "Neblina",
+  rain: "Chovendo",
+};
+
+export function getWeatherName(weather: WeatherType) {
+  return weatherDictionary[weather];
+}
+
+const WEATHER_TEMPERATURES: Record<WeatherType, TemperatureRange> = {
+  sun: { min: 20, max: 35 },
+  rain: { min: 10, max: 20 },
+  fog: { min: 5, max: 15 },
+  snow: { min: -10, max: 5 },
+};
+
+const WEIGHT_DECREASE = 5;
+const WEIGHT_INCREASE = 2;
+const PERSISTENCE_BONUS = 3;
+
+export class WeatherSystem {
+  private static instance: WeatherSystem | null = null;
+
+  private constructor() {}
+
+  static getInstance(): WeatherSystem {
+    if (!WeatherSystem.instance) {
+      WeatherSystem.instance = new WeatherSystem();
+    }
+    return WeatherSystem.instance;
+  }
+
+  initialize(guildId: string): void {
+    const existing = weatherState.get(guildId);
+    if (!existing) {
+      const initialWeather = this.selectRandomWeather(DEFAULT_WEIGHTS);
+      const tempRange = this.getTemperatureForWeather(initialWeather);
+      weatherState.set(guildId, {
+        currentWeather: initialWeather,
+        temperature: this.generateRandomTemperature(tempRange),
+      });
+    }
+  }
+
+  private selectRandomWeather(weights: WeatherWeights): WeatherType {
+    const total = weights.sun + weights.rain + weights.fog + weights.snow;
+    let random = Math.random() * total;
+
+    if (random < weights.sun) return "sun";
+    random -= weights.sun;
+    if (random < weights.rain) return "rain";
+    random -= weights.rain;
+    if (random < weights.fog) return "fog";
+    return "snow";
+  }
+
+  getWeather(guildId: string): WeatherType {
+    const state = weatherState.get(guildId);
+    return (state?.currentWeather as WeatherType) || "sun";
+  }
+
+  getWeights(guildId: string): WeatherWeights {
+    const state = weatherState.get(guildId);
+    return state?.weights || DEFAULT_WEIGHTS;
+  }
+
+  getTemperature(guildId: string): number | null {
+    const state = weatherState.get(guildId);
+    return state?.temperature ?? null;
+  }
+
+  setTemperature(guildId: string, temperature: number): void {
+    const current = weatherState.get(guildId);
+    const currentWeather = current?.currentWeather || "sun";
+    weatherState.set(guildId, { currentWeather, temperature });
+  }
+
+  clearTemperature(guildId: string): void {
+    const current = weatherState.get(guildId);
+    const currentWeather = current?.currentWeather || "sun";
+    const tempRange = this.getTemperatureForWeather(
+      currentWeather as WeatherType,
+    );
+    const randomTemp = this.generateRandomTemperature(tempRange);
+    weatherState.set(guildId, { currentWeather, temperature: randomTemp });
+  }
+
+  getTemperatureRange(guildId: string): TemperatureRange {
+    const weather = this.getWeather(guildId);
+    const config = dailyEmbedConfig.get(guildId);
+
+    if (config?.weatherMode === "fixed") {
+      return (
+        WEATHER_TEMPERATURES[config.weatherFixedType as WeatherType] ||
+        DEFAULT_TEMPERATURE
+      );
+    }
+
+    return WEATHER_TEMPERATURES[weather] || DEFAULT_TEMPERATURE;
+  }
+
+  private getTemperatureForWeather(weather: WeatherType): TemperatureRange {
+    return WEATHER_TEMPERATURES[weather] || DEFAULT_TEMPERATURE;
+  }
+
+  private generateRandomTemperature(range: TemperatureRange): number {
+    return Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+  }
+
+  setFixedWeather(guildId: string, weather: WeatherType): void {
+    const tempRange = this.getTemperatureForWeather(weather);
+    const temperature = this.generateRandomTemperature(tempRange);
+    weatherState.set(guildId, { currentWeather: weather, temperature });
+    dailyEmbedConfig.set(guildId, {
+      weatherMode: "fixed",
+      weatherFixedType: weather,
+    });
+  }
+
+  setDynamicWeather(guildId: string): void {
+    dailyEmbedConfig.set(guildId, {
+      weatherMode: "dynamic",
+      weatherFixedType: null,
+    });
+  }
+
+  updateWeather(guildId: string): WeatherType {
+    const currentState = weatherState.get(guildId);
+    const currentWeather =
+      (currentState?.currentWeather as WeatherType) || "sun";
+    let weights = currentState?.weights || DEFAULT_WEIGHTS;
+
+    console.log(weights)
+
+    weights = {
+      sun:
+        currentWeather === "sun"
+          ? weights.sun - WEIGHT_DECREASE
+          : weights.sun + WEIGHT_INCREASE,
+      rain:
+        currentWeather === "rain"
+          ? weights.rain - WEIGHT_DECREASE
+          : weights.rain + WEIGHT_INCREASE,
+      fog:
+        currentWeather === "fog"
+          ? weights.fog - WEIGHT_DECREASE
+          : weights.fog + WEIGHT_INCREASE,
+      snow:
+        currentWeather === "snow"
+          ? weights.snow - WEIGHT_DECREASE
+          : weights.snow + WEIGHT_INCREASE,
+    };
+
+    weights.sun = Math.max(1, weights.sun);
+    weights.rain = Math.max(1, weights.rain);
+    weights.fog = Math.max(1, weights.fog);
+    weights.snow = Math.max(1, weights.snow);
+
+    const persistenceBonus =
+      (currentState?.consecutiveHours || 0) * PERSISTENCE_BONUS;
+    const weightedWithBonus = { ...weights };
+    weightedWithBonus[currentWeather] += persistenceBonus;
+
+    const newWeather = this.selectRandomWeather(weightedWithBonus);
+
+    const tempRange = this.getTemperatureForWeather(newWeather);
+    const newTemperature = this.generateRandomTemperature(tempRange);
+
+    weatherState.set(guildId, {
+      currentWeather: newWeather,
+      temperature: newTemperature,
+      weights,
+    });
+
+    dailyEmbedConfig.set(guildId, { weatherWeights: weights });
+
+    return newWeather;
+  }
+
+  isFixedMode(guildId: string): boolean {
+    const config = dailyEmbedConfig.get(guildId);
+    return config?.weatherMode === "fixed";
+  }
+
+  getFixedWeather(guildId: string): WeatherType | null {
+    const config = dailyEmbedConfig.get(guildId);
+    return (config?.weatherFixedType as WeatherType) || null;
+  }
+}
+
+export const weatherSystem = WeatherSystem.getInstance();
