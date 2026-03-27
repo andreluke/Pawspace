@@ -4,6 +4,7 @@ import { getDailyEmbedConfig, setDailyEmbedConfig, clearDailyEmbedConfig } from 
 import { weatherSystem, WeatherType } from "#functions";
 import { sendDailyEmbed } from "#functions";
 import { ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel } from "discord.js";
+import { updateGuildSchedule } from "../../events/daily-embed.js";
 
 createResponder({
     customId: "daily-config/channel-select",
@@ -214,6 +215,7 @@ createResponder({
         const newSchedules = [...new Set([...currentSchedules, ...schedules])].slice(0, 4);
         
         setDailyEmbedConfig(guild.id, { schedules: newSchedules });
+        updateGuildSchedule(guild.id, newSchedules);
 
         await interaction.reply({
             content: `✅ Horários configurados: ${newSchedules.join(", ")}`,

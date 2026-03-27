@@ -67,7 +67,7 @@ async function sendDailyEmbedForGuild(
 
     weatherSystem.updateWeather(guildId);
 
-    const embedData = buildDailyEmbed(guildId);
+    const embedData = buildDailyEmbed(guildId, true);
     const embed = createDailyEmbed(embedData);
 
     const attachments = embedData.imagePath ? [embedData.imagePath] : [];

@@ -11,7 +11,8 @@
     "watch:dev": "tsx --watch --env-file=.env.dev ./src/index.ts",
     "start": "node --env-file=.env .",
     "start:dev": "node --env-file=.env.dev .",
-    "migrate": "tsx ./scripts/migrate-json-to-db.ts"
+    "migrate": "tsx ./scripts/migrate-json-to-db.ts",
+    "dv:init": "tsx ./scripts/init-database.ts"
   },
   "dependencies": {
     "@constatic/base": "latest",
