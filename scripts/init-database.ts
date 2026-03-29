@@ -38,6 +38,8 @@ function initDatabase(): void {
                 enabled INTEGER DEFAULT 0,
                 current_server_day INTEGER DEFAULT 1,
                 current_period TEXT DEFAULT '',
+                manual_date TEXT,
+                period_index INTEGER,
                 last_update TEXT
             )
         `);

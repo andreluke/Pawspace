@@ -67,7 +67,7 @@ createResponder({
                     .setCustomId("day-multiplier")
                     .setLabel("Dias reais = 1 dia jogo")
                     .setStyle(TextInputStyle.Short)
-                    .setValue(String(config?.dayMultiplier || 1))
+                    .setValue(String(config?.dayMultiplier || 2))
                     .setRequired(true)
             );
 
