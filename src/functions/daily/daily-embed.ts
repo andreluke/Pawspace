@@ -38,7 +38,7 @@ const periodNames: Record<PeriodType, string> = {
 };
 
 const weatherNames: Record<WeatherType, string> = {
-  sun: "Sol",
+  sun: "Limpo",
   rain: "Chuva",
   fog: "Neblina",
   snow: "Neve",
@@ -135,6 +135,7 @@ export function calculateServerDay(
   );
 
   let periodIndex: number;
+  const dayAfter = saveToDb ? 0 : 1
 
   if (config.periodIndex === null || config.periodIndex === undefined) {
     if (now.getHours() < 6) {
@@ -165,7 +166,7 @@ export function calculateServerDay(
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
   } else {
-    periodIndex = (config.periodIndex + 1) % 4;
+    periodIndex = (config.periodIndex + 1 - dayAfter) % 4;
 
     if (saveToDb) {
       dailyEmbedConfig.set(guildId, { periodIndex });
@@ -174,13 +175,14 @@ export function calculateServerDay(
 
   const period = PERIOD_ORDER[periodIndex];
 
+
   let currentDate: Date;
   let manualDateStr: string;
-  const updateDate = periodIndex == 0 ? 1 : 0;
+  const updateDate = periodIndex == 0 && dayAfter == 0 ? 1 : 0;
 
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
-    const day = parseInt(parts[0], 10) + updateDate;
+    const day = parseInt(parts[0], 10) + updateDate - dayAfter;
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
 
@@ -247,7 +249,18 @@ export function buildDailyEmbed(
 
   const weatherEmoji = WEATHER_EMOJIS[weather];
   const imagePath = getWeatherImagePath(period, weather);
-  const temperature = weatherSystem.getTemperature(guildId);
+  const config = dailyEmbedConfig.get(guildId);
+  const fixedTemperature = config?.fixedTemperature ?? null;
+  const weatherTemperature = weatherSystem.getTemperature(guildId);
+
+  let finalTemperature = fixedTemperature ?? weatherTemperature;
+  if (finalTemperature !== null) {
+    if (period === "night") {
+      finalTemperature -= 3;
+    } else if (period === "dawn") {
+      finalTemperature -= 5;
+    }
+  }
 
   return {
     serverDay: day,
@@ -258,7 +271,7 @@ export function buildDailyEmbed(
     weatherEmoji,
     imagePath,
     serverTimeOfDay: periodNames[period],
-    temperature,
+    temperature: finalTemperature,
     realDate,
     currentDate,
   };
@@ -339,6 +352,8 @@ export async function sendDailyEmbed(
 
   const embedData = buildDailyEmbed(guildId, true);
   const embed = createDailyEmbed(embedData);
+
+  weatherSystem.updateWeather(guildId)
 
   const attachments = embedData.imagePath ? [embedData.imagePath] : [];
 

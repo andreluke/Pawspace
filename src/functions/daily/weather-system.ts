@@ -34,7 +34,7 @@ export function getWeatherName(weather: WeatherType) {
 }
 
 const WEATHER_TEMPERATURES: Record<WeatherType, TemperatureRange> = {
-  sun: { min: 20, max: 35 },
+  sun: { min: 20, max: 25 },
   rain: { min: 10, max: 20 },
   fog: { min: 5, max: 15 },
   snow: { min: -10, max: 5 },

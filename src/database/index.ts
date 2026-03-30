@@ -37,6 +37,7 @@ export interface DailyEmbedConfigRow {
   current_period: string;
   manual_date: string | null;
   period_index: number | null;
+  fixed_temperature: number | null;
   last_update: string | null;
 }
 
@@ -56,6 +57,7 @@ export interface DailyEmbedConfig {
   currentPeriod: string;
   manualDate: string | null;
   periodIndex: number | null;
+  fixedTemperature: number | null;
   lastUpdate: string | null;
 }
 
@@ -166,6 +168,7 @@ function mapDailyEmbedRow(row: DailyEmbedConfigRow): DailyEmbedConfig {
     currentPeriod: row.current_period,
     manualDate: row.manual_date ?? null,
     periodIndex: row.period_index ?? null,
+    fixedTemperature: row.fixed_temperature ?? null,
     lastUpdate: row.last_update,
   };
 }
@@ -251,6 +254,7 @@ export class DatabaseManager {
                     current_period TEXT DEFAULT '',
                     manual_date TEXT,
                     period_index INTEGER,
+                    fixed_temperature INTEGER,
                     last_update TEXT
                 )
             `);
@@ -426,6 +430,7 @@ export class DailyEmbedConfigManager {
       enabled?: boolean;
       manualDate?: string | null;
       periodIndex?: number | null;
+      fixedTemperature?: number | null;
     },
   ): DailyEmbedConfig {
     try {
@@ -460,6 +465,9 @@ export class DailyEmbedConfigManager {
         period_index: data.periodIndex !== undefined 
           ? data.periodIndex 
           : existing?.periodIndex ?? null,
+        fixed_temperature: data.fixedTemperature !== undefined 
+          ? data.fixedTemperature 
+          : existing?.fixedTemperature ?? null,
         last_update: new Date().toISOString(),
       };
 
@@ -467,8 +475,8 @@ export class DailyEmbedConfigManager {
         .prepare(
           `
                 INSERT OR REPLACE INTO daily_embed_config 
-                (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, last_update)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, fixed_temperature, last_update)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
         )
         .run(
@@ -487,6 +495,7 @@ export class DailyEmbedConfigManager {
           config.current_period,
           config.manual_date,
           config.period_index,
+          config.fixed_temperature,
           config.last_update,
         );
 
@@ -506,6 +515,7 @@ export class DailyEmbedConfigManager {
         currentPeriod: config.current_period,
         manualDate: config.manual_date,
         periodIndex: config.period_index,
+        fixedTemperature: config.fixed_temperature,
         lastUpdate: config.last_update,
       };
     } catch (error) {

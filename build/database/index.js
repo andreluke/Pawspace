@@ -37,6 +37,7 @@ function mapDailyEmbedRow(row) {
     currentPeriod: row.current_period,
     manualDate: row.manual_date ?? null,
     periodIndex: row.period_index ?? null,
+    fixedTemperature: row.fixed_temperature ?? null,
     lastUpdate: row.last_update
   };
 }
@@ -114,6 +115,7 @@ class DatabaseManager {
                     current_period TEXT DEFAULT '',
                     manual_date TEXT,
                     period_index INTEGER,
+                    fixed_temperature INTEGER,
                     last_update TEXT
                 )
             `);
@@ -266,13 +268,14 @@ class DailyEmbedConfigManager {
         current_period: existing?.currentPeriod ?? "",
         manual_date: data.manualDate !== void 0 ? data.manualDate : existing?.manualDate ?? null,
         period_index: data.periodIndex !== void 0 ? data.periodIndex : existing?.periodIndex ?? null,
+        fixed_temperature: data.fixedTemperature !== void 0 ? data.fixedTemperature : existing?.fixedTemperature ?? null,
         last_update: (/* @__PURE__ */ new Date()).toISOString()
       };
       this.db.prepare(
         `
                 INSERT OR REPLACE INTO daily_embed_config 
-                (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, last_update)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, fixed_temperature, last_update)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
       ).run(
         config.guild_id,
@@ -290,6 +293,7 @@ class DailyEmbedConfigManager {
         config.current_period,
         config.manual_date,
         config.period_index,
+        config.fixed_temperature,
         config.last_update
       );
       return {
@@ -308,6 +312,7 @@ class DailyEmbedConfigManager {
         currentPeriod: config.current_period,
         manualDate: config.manual_date,
         periodIndex: config.period_index,
+        fixedTemperature: config.fixed_temperature,
         lastUpdate: config.last_update
       };
     } catch (error) {

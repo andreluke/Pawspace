@@ -51,7 +51,7 @@ async function sendDailyEmbedForGuild(guildId, schedule) {
     const channel = guild.channels.cache.get(config.channelId);
     if (!channel || !(channel instanceof TextChannel)) return;
     weatherSystem.updateWeather(guildId);
-    const embedData = buildDailyEmbed(guildId);
+    const embedData = buildDailyEmbed(guildId, true);
     const embed = createDailyEmbed(embedData);
     const attachments = embedData.imagePath ? [embedData.imagePath] : [];
     await channel.send({

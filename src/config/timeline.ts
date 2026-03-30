@@ -91,6 +91,7 @@ export function setDailyEmbedConfig(
         enabled?: boolean;
         manualDate?: string | null;
         periodIndex?: number | null;
+        fixedTemperature?: number | null;
     }
 ): DailyEmbedConfig {
     return dailyEmbedConfig.set(guildId, data);

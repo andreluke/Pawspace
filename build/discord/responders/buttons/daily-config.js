@@ -1,9 +1,9 @@
 import { createResponder } from "#base";
+import { clearDailyEmbedConfig, getDailyEmbedConfig, setDailyEmbedConfig } from "#config";
+import { sendDailyEmbed, weatherSystem } from "#functions";
 import { ResponderType } from "@constatic/base";
-import { getDailyEmbedConfig, setDailyEmbedConfig, clearDailyEmbedConfig } from "#config";
-import { weatherSystem } from "#functions";
-import { sendDailyEmbed } from "#functions";
-import { ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel } from "discord.js";
+import { ModalBuilder, TextChannel, TextInputBuilder, TextInputStyle } from "discord.js";
+import { updateGuildSchedule } from "../../events/daily-embed.js";
 createResponder({
   customId: "daily-config/channel-select",
   types: [ResponderType.ChannelSelect],
@@ -38,7 +38,7 @@ createResponder({
       new TextInputBuilder().setCustomId("start-day").setLabel("Dia").setStyle(TextInputStyle.Short).setValue(String(config?.startDay || 1)).setRequired(true),
       new TextInputBuilder().setCustomId("start-month").setLabel("M\xEAs").setStyle(TextInputStyle.Short).setValue(String(config?.startMonth || 1)).setRequired(true),
       new TextInputBuilder().setCustomId("start-year").setLabel("Ano").setStyle(TextInputStyle.Short).setValue(String(config?.startYear || 2024)).setRequired(true),
-      new TextInputBuilder().setCustomId("day-multiplier").setLabel("Dias reais = 1 dia jogo").setStyle(TextInputStyle.Short).setValue(String(config?.dayMultiplier || 1)).setRequired(true)
+      new TextInputBuilder().setCustomId("day-multiplier").setLabel("Dias reais = 1 dia jogo").setStyle(TextInputStyle.Short).setValue(String(config?.dayMultiplier || 2)).setRequired(true)
     );
     await interaction.showModal(modal);
   }
@@ -145,6 +145,7 @@ createResponder({
     const currentSchedules = config?.schedules || [];
     const newSchedules = [.../* @__PURE__ */ new Set([...currentSchedules, ...schedules])].slice(0, 4);
     setDailyEmbedConfig(guild.id, { schedules: newSchedules });
+    updateGuildSchedule(guild.id, newSchedules);
     await interaction.reply({
       content: `\u2705 Hor\xE1rios configurados: ${newSchedules.join(", ")}`,
       flags: ["Ephemeral"]
@@ -224,9 +225,10 @@ createResponder({
   async run(interaction) {
     const guild = interaction.guild;
     if (!guild) return;
-    const currentTemp = weatherSystem.getTemperature(guild.id);
+    const config = getDailyEmbedConfig(guild.id);
+    const currentTemp = config?.fixedTemperature ?? null;
     if (currentTemp !== null) {
-      weatherSystem.clearTemperature(guild.id);
+      setDailyEmbedConfig(guild.id, { fixedTemperature: null });
       await interaction.reply({
         content: "\u2705 Temperatura revertida para autom\xE1tico!",
         flags: ["Ephemeral"]
@@ -256,9 +258,9 @@ createResponder({
         });
         return;
       }
-      weatherSystem.setTemperature(guild.id, temperature);
+      setDailyEmbedConfig(guild.id, { fixedTemperature: temperature });
       await interaction.reply({
-        content: `\u2705 Temperatura definida para ${temperature}\xB0C!`,
+        content: `\u2705 Temperatura fixa definida para ${temperature}\xB0C!`,
         flags: ["Ephemeral"]
       });
     } catch (error) {
@@ -273,7 +275,7 @@ createResponder({
 function getWeatherName(weather) {
   switch (weather) {
     case "sun":
-      return "Sol";
+      return "Limpo";
     case "rain":
       return "Chuva";
     case "fog":

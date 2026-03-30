@@ -1,9 +1,8 @@
 import { createResponder } from "#base";
+import { clearDailyEmbedConfig, getDailyEmbedConfig, setDailyEmbedConfig } from "#config";
+import { sendDailyEmbed, weatherSystem, WeatherType } from "#functions";
 import { ResponderType } from "@constatic/base";
-import { getDailyEmbedConfig, setDailyEmbedConfig, clearDailyEmbedConfig } from "#config";
-import { weatherSystem, WeatherType } from "#functions";
-import { sendDailyEmbed } from "#functions";
-import { ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel } from "discord.js";
+import { ModalBuilder, TextChannel, TextInputBuilder, TextInputStyle } from "discord.js";
 import { updateGuildSchedule } from "../../events/daily-embed.js";
 
 createResponder({
@@ -310,10 +309,11 @@ createResponder({
         const guild = interaction.guild;
         if (!guild) return;
 
-        const currentTemp = weatherSystem.getTemperature(guild.id);
+        const config = getDailyEmbedConfig(guild.id);
+        const currentTemp = config?.fixedTemperature ?? null;
 
         if (currentTemp !== null) {
-            weatherSystem.clearTemperature(guild.id);
+            setDailyEmbedConfig(guild.id, { fixedTemperature: null });
             await interaction.reply({
                 content: "✅ Temperatura revertida para automático!",
                 flags: ["Ephemeral"],
@@ -357,10 +357,10 @@ createResponder({
                 return;
             }
 
-            weatherSystem.setTemperature(guild.id, temperature);
+            setDailyEmbedConfig(guild.id, { fixedTemperature: temperature });
 
             await interaction.reply({
-                content: `✅ Temperatura definida para ${temperature}°C!`,
+                content: `✅ Temperatura fixa definida para ${temperature}°C!`,
                 flags: ["Ephemeral"],
             });
         } catch (error) {
@@ -375,7 +375,7 @@ createResponder({
 
 function getWeatherName(weather: string): string {
     switch (weather) {
-        case "sun": return "Sol";
+        case "sun": return "Limpo";
         case "rain": return "Chuva";
         case "fog": return "Neblina";
         case "snow": return "Neve";

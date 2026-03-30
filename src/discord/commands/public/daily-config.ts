@@ -3,13 +3,13 @@ import { getDailyEmbedConfig } from "#config";
 import { weatherSystem } from "#functions";
 import { createRow } from "@magicyan/discord";
 import {
-    ApplicationCommandType,
-    ButtonBuilder,
-    ButtonStyle,
-    ChannelSelectMenuBuilder,
-    EmbedBuilder,
-    GuildMember,
-    StringSelectMenuBuilder,
+  ApplicationCommandType,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelSelectMenuBuilder,
+  EmbedBuilder,
+  GuildMember,
+  StringSelectMenuBuilder,
 } from "discord.js";
 
 async function isModerator(member: GuildMember): Promise<boolean> {
@@ -176,7 +176,7 @@ createCommand({
         placeholder: "Clima",
         options: [
           { label: "🔄 Dinâmico", value: "dynamic" },
-          { label: "☀️ Sol", value: "sun" },
+          { label: "☀️ Limpo", value: "sun" },
           { label: "🌧️ Chuva", value: "rain" },
           { label: "🌫️ Neblina", value: "fog" },
           { label: "❄️ Neve", value: "snow" },

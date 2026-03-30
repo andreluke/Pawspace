@@ -1,4 +1,4 @@
-# Guia do Agente — Framework Constatic
+# Guia — Framework Constatic
 
 > Framework TypeScript para criação de bots de Discord modernos, gerado via CLI (`constatic`).  
 > Repositório: [rinckodev/constatic](https://github.com/rinckodev/constatic) | Docs: https://constatic-docs.vercel.app/pt/docs

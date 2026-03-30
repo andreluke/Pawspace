@@ -40,6 +40,7 @@ function initDatabase(): void {
                 current_period TEXT DEFAULT '',
                 manual_date TEXT,
                 period_index INTEGER,
+                fixed_temperature INTEGER,
                 last_update TEXT
             )
         `);

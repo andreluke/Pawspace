@@ -30,7 +30,7 @@ const periodNames = {
   dawn: "Madrugada"
 };
 const weatherNames = {
-  sun: "Sol",
+  sun: "Limpo",
   rain: "Chuva",
   fog: "Neblina",
   snow: "Neve"
@@ -94,6 +94,7 @@ function calculateServerDay(guildId, saveToDb = false) {
     0
   );
   let periodIndex;
+  const dayAfter = saveToDb ? 0 : 1;
   if (config.periodIndex === null || config.periodIndex === void 0) {
     if (now.getHours() < 6) {
       periodIndex = 0;
@@ -116,7 +117,7 @@ function calculateServerDay(guildId, saveToDb = false) {
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
   } else {
-    periodIndex = (config.periodIndex + 1) % 4;
+    periodIndex = (config.periodIndex + 1 - dayAfter) % 4;
     if (saveToDb) {
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
@@ -124,10 +125,10 @@ function calculateServerDay(guildId, saveToDb = false) {
   const period = PERIOD_ORDER[periodIndex];
   let currentDate;
   let manualDateStr;
-  const updateDate = periodIndex == 0 ? 1 : 0;
+  const updateDate = periodIndex == 0 && dayAfter == 0 ? 1 : 0;
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
-    const day = parseInt(parts[0], 10) + updateDate;
+    const day = parseInt(parts[0], 10) + updateDate - dayAfter;
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
     const jsDate = new Date(year, month - 1, day);
@@ -179,7 +180,17 @@ function buildDailyEmbed(guildId, saveToDb = false) {
   }
   const weatherEmoji = WEATHER_EMOJIS[weather];
   const imagePath = getWeatherImagePath(period, weather);
-  const temperature = weatherSystem.getTemperature(guildId);
+  const config = dailyEmbedConfig.get(guildId);
+  const fixedTemperature = config?.fixedTemperature ?? null;
+  const weatherTemperature = weatherSystem.getTemperature(guildId);
+  let finalTemperature = fixedTemperature ?? weatherTemperature;
+  if (finalTemperature !== null) {
+    if (period === "night") {
+      finalTemperature -= 3;
+    } else if (period === "dawn") {
+      finalTemperature -= 5;
+    }
+  }
   return {
     serverDay: day,
     serverMonth: month,
@@ -189,7 +200,7 @@ function buildDailyEmbed(guildId, saveToDb = false) {
     weatherEmoji,
     imagePath,
     serverTimeOfDay: periodNames[period],
-    temperature,
+    temperature: finalTemperature,
     realDate,
     currentDate
   };
@@ -253,6 +264,7 @@ async function sendDailyEmbed(guildId, channel) {
   if (!config || !config.enabled || !config.channelId) return;
   const embedData = buildDailyEmbed(guildId, true);
   const embed = createDailyEmbed(embedData);
+  weatherSystem.updateWeather(guildId);
   const attachments = embedData.imagePath ? [embedData.imagePath] : [];
   await channel.send({
     embeds: [embed],

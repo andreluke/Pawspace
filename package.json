@@ -12,7 +12,9 @@
     "start": "node --env-file=.env .",
     "start:dev": "node --env-file=.env.dev .",
     "migrate": "tsx ./scripts/migrate-json-to-db.ts",
-    "db:init": "tsx ./scripts/init-database.ts"
+    "db:init": "tsx ./scripts/init-database.ts",
+    "db:export": "tsx ./scripts/export-import.ts --export",
+    "db:import": "tsx ./scripts/export-import.ts --import"
   },
   "dependencies": {
     "@constatic/base": "latest",

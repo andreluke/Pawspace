@@ -146,7 +146,7 @@ createCommand({
         placeholder: "Clima",
         options: [
           { label: "\u{1F504} Din\xE2mico", value: "dynamic" },
-          { label: "\u2600\uFE0F Sol", value: "sun" },
+          { label: "\u2600\uFE0F Limpo", value: "sun" },
           { label: "\u{1F327}\uFE0F Chuva", value: "rain" },
           { label: "\u{1F32B}\uFE0F Neblina", value: "fog" },
           { label: "\u2744\uFE0F Neve", value: "snow" }
