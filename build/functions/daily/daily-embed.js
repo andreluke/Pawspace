@@ -128,7 +128,7 @@ function calculateServerDay(guildId, saveToDb = false) {
   const updateDate = periodIndex == 0 && dayAfter == 0 ? 1 : 0;
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
-    const day = parseInt(parts[0], 10) + updateDate - dayAfter;
+    const day = parseInt(parts[0], 10) + updateDate;
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
     const jsDate = new Date(year, month - 1, day);

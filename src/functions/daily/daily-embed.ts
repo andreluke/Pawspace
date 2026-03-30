@@ -182,7 +182,7 @@ export function calculateServerDay(
 
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
-    const day = parseInt(parts[0], 10) + updateDate - dayAfter;
+    const day = parseInt(parts[0], 10) + updateDate;
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
 
