@@ -1,136 +1,23 @@
+import {
+  BotHistory,
+  BotHistoryRow,
+  DailyEmbedConfig,
+  DailyEmbedConfigRow,
+  TimelineConfig,
+  TimelineConfigRow,
+  VerifiedUser,
+  VerifiedUserRow,
+  WeatherState,
+  WeatherStateRow,
+  WeatherWeights,
+} from "#types";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import { TABLE_DEFINITIONS, TABLE_NAMES } from "./sql-tables.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, "../../pawspace.db");
-
-export interface TimelineConfigRow {
-  guild_id: string;
-  timeline_channel: string | null;
-  chat_categories: string;
-  verified_users: string;
-  updated_at: string | null;
-}
-
-export interface TimelineConfig {
-  guildId: string;
-  timelineChannel: string | null;
-  chatCategories: string[];
-  verifiedUsers: string[];
-  updatedAt: string | null;
-}
-
-export interface DailyEmbedConfigRow {
-  guild_id: string;
-  channel_id: string;
-  start_day: number;
-  start_month: number;
-  start_year: number;
-  day_multiplier: number;
-  schedules: string;
-  weather_mode: string;
-  weather_fixed_type: string | null;
-  weather_weights: string;
-  enabled: number;
-  current_server_day: number;
-  current_period: string;
-  manual_date: string | null;
-  period_index: number | null;
-  fixed_temperature: number | null;
-  last_update: string | null;
-}
-
-export interface DailyEmbedConfig {
-  guildId: string;
-  channelId: string;
-  startDay: number;
-  startMonth: number;
-  startYear: number;
-  dayMultiplier: number;
-  schedules: string[];
-  weatherMode: "dynamic" | "fixed";
-  weatherFixedType: string | null;
-  weatherWeights: WeatherWeights;
-  enabled: boolean;
-  currentServerDay: number;
-  currentPeriod: string;
-  manualDate: string | null;
-  periodIndex: number | null;
-  fixedTemperature: number | null;
-  lastUpdate: string | null;
-}
-
-export interface WeatherWeights {
-  sun: number;
-  rain: number;
-  fog: number;
-  snow: number;
-}
-
-export interface VerifiedUserRow {
-  id: string;
-  guild_id: string;
-  display_name: string;
-  username: string;
-  xp: number;
-  level: number;
-  total_posts: number;
-  last_post_at: string;
-  created_at: string;
-}
-
-export interface VerifiedUser {
-  id: string;
-  guildId: string;
-  displayName: string;
-  username: string;
-  xp: number;
-  level: number;
-  totalPosts: number;
-  lastPostAt: string;
-  createdAt: string;
-}
-
-export interface BotHistoryRow {
-  id: string;
-  guild_id: string;
-  category_id: string;
-  display_name: string;
-  username: string;
-  first_seen: string;
-  last_seen: string;
-  post_count: number;
-}
-
-export interface BotHistory {
-  id: string;
-  guildId: string;
-  categoryId: string;
-  displayName: string;
-  username: string;
-  firstSeen: string;
-  lastSeen: string;
-  postCount: number;
-}
-
-export interface WeatherStateRow {
-  guild_id: string;
-  current_weather: string;
-  weights: string;
-  temperature: number | null;
-  last_update: string;
-  consecutive_hours: number;
-}
-
-export interface WeatherState {
-  guildId: string;
-  currentWeather: string;
-  weights: WeatherWeights;
-  temperature: number | null;
-  lastUpdate: string;
-  consecutiveHours: number;
-}
 
 const DEFAULT_WEIGHTS: WeatherWeights = {
   sun: 40,
@@ -138,6 +25,56 @@ const DEFAULT_WEIGHTS: WeatherWeights = {
   fog: 20,
   snow: 10,
 };
+
+let dbManager: DatabaseManager | null = null;
+export let timelineConfig: TimelineConfigManager;
+export let dailyEmbedConfig: DailyEmbedConfigManager;
+export let verifiedUsers: VerifiedUserManager;
+export let botHistory: BotHistoryManager;
+export let weatherState: WeatherStateManager;
+
+export async function initDatabase(): Promise<void> {
+  if (dbManager) return;
+
+  dbManager = new DatabaseManager();
+  await dbManager.initTables();
+
+  timelineConfig = new TimelineConfigManager(dbManager.getDatabase());
+  dailyEmbedConfig = new DailyEmbedConfigManager(dbManager.getDatabase());
+  verifiedUsers = new VerifiedUserManager(dbManager.getDatabase());
+  botHistory = new BotHistoryManager(dbManager.getDatabase());
+  weatherState = new WeatherStateManager(dbManager.getDatabase());
+}
+
+export class DatabaseManager {
+  private db: Database.Database;
+
+  constructor(dbPath: string = DB_PATH) {
+    this.db = new Database(dbPath);
+    this.db.pragma("journal_mode = WAL");
+  }
+
+  getDatabase(): Database.Database {
+    return this.db;
+  }
+
+  async initTables(): Promise<void> {
+    try {
+      for (const table of TABLE_NAMES) {
+        this.db.exec(TABLE_DEFINITIONS[table]);
+        console.log(`[Database] ✓ ${table}`);
+      }
+      console.log("[Database] All tables initialized successfully");
+    } catch (error) {
+      console.error("[Database] Failed to initialize tables:", error);
+      throw error;
+    }
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
 
 function mapTimelineRow(row: TimelineConfigRow): TimelineConfig {
   return {
@@ -213,102 +150,6 @@ function mapWeatherStateRow(row: WeatherStateRow): WeatherState {
   };
 }
 
-export class DatabaseManager {
-  private db: Database.Database;
-
-  constructor(dbPath: string = DB_PATH) {
-    this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
-  }
-
-  getDatabase(): Database.Database {
-    return this.db;
-  }
-
-  async initTables(): Promise<void> {
-    try {
-      this.db.exec(`
-                CREATE TABLE IF NOT EXISTS timeline_config (
-                    guild_id TEXT PRIMARY KEY,
-                    timeline_channel TEXT,
-                    chat_categories TEXT DEFAULT '[]',
-                    verified_users TEXT DEFAULT '[]',
-                    updated_at TEXT
-                )
-            `);
-
-      this.db.exec(`
-                CREATE TABLE IF NOT EXISTS daily_embed_config (
-                    guild_id TEXT PRIMARY KEY,
-                    channel_id TEXT,
-                    start_day INTEGER DEFAULT 1,
-                    start_month INTEGER DEFAULT 1,
-                    start_year INTEGER DEFAULT 2024,
-                    day_multiplier INTEGER DEFAULT 2,
-                    schedules TEXT DEFAULT '[]',
-                    weather_mode TEXT DEFAULT 'dynamic',
-                    weather_fixed_type TEXT,
-                    weather_weights TEXT DEFAULT '{"sun":40,"rain":30,"fog":20,"snow":10}',
-                    enabled INTEGER DEFAULT 0,
-                    current_server_day INTEGER DEFAULT 1,
-                    current_period TEXT DEFAULT '',
-                    manual_date TEXT,
-                    period_index INTEGER,
-                    fixed_temperature INTEGER,
-                    last_update TEXT
-                )
-            `);
-
-      this.db.exec(`
-                CREATE TABLE IF NOT EXISTS verified_users (
-                    id TEXT PRIMARY KEY,
-                    guild_id TEXT,
-                    display_name TEXT,
-                    username TEXT,
-                    xp INTEGER DEFAULT 0,
-                    level INTEGER DEFAULT 1,
-                    total_posts INTEGER DEFAULT 0,
-                    last_post_at TEXT,
-                    created_at TEXT
-                )
-            `);
-
-      this.db.exec(`
-                CREATE TABLE IF NOT EXISTS bot_history (
-                    id TEXT PRIMARY KEY,
-                    guild_id TEXT,
-                    category_id TEXT,
-                    display_name TEXT,
-                    username TEXT,
-                    first_seen TEXT,
-                    last_seen TEXT,
-                    post_count INTEGER DEFAULT 0
-                )
-            `);
-
-      this.db.exec(`
-                CREATE TABLE IF NOT EXISTS weather_state (
-                    guild_id TEXT PRIMARY KEY,
-                    current_weather TEXT,
-                    weights TEXT DEFAULT '{"sun":40,"rain":30,"fog":20,"snow":10}',
-                    temperature INTEGER,
-                    last_update TEXT,
-                    consecutive_hours INTEGER DEFAULT 0
-                )
-            `);
-
-      console.log("[Database] Tables initialized successfully");
-    } catch (error) {
-      console.error("[Database] Failed to initialize tables:", error);
-      throw error;
-    }
-  }
-
-  close(): void {
-    this.db.close();
-  }
-}
-
 export class TimelineConfigManager {
   constructor(private db: Database.Database) {}
 
@@ -349,10 +190,7 @@ export class TimelineConfigManager {
 
       this.db
         .prepare(
-          `
-                INSERT OR REPLACE INTO timeline_config (guild_id, timeline_channel, chat_categories, verified_users, updated_at)
-                VALUES (?, ?, ?, ?, ?)
-            `,
+          `INSERT OR REPLACE INTO timeline_config (guild_id, timeline_channel, chat_categories, verified_users, updated_at) VALUES (?, ?, ?, ?, ?)`,
         )
         .run(
           config.guild_id,
@@ -473,11 +311,7 @@ export class DailyEmbedConfigManager {
 
       this.db
         .prepare(
-          `
-                INSERT OR REPLACE INTO daily_embed_config 
-                (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, fixed_temperature, last_update)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `,
+          `INSERT OR REPLACE INTO daily_embed_config (guild_id, channel_id, start_day, start_month, start_year, day_multiplier, schedules, weather_mode, weather_fixed_type, weather_weights, enabled, current_server_day, current_period, manual_date, period_index, fixed_temperature, last_update) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           config.guild_id,
@@ -593,10 +427,7 @@ export class VerifiedUserManager {
 
       this.db
         .prepare(
-          `
-                INSERT OR REPLACE INTO verified_users (id, guild_id, display_name, username, xp, level, total_posts, last_post_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `,
+          `INSERT OR REPLACE INTO verified_users (id, guild_id, display_name, username, xp, level, total_posts, last_post_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           user.id,
@@ -678,9 +509,7 @@ export class VerifiedUserManager {
 
       this.db
         .prepare(
-          `
-                UPDATE verified_users SET xp = ?, level = ?, total_posts = ?, last_post_at = ? WHERE id = ?
-            `,
+          `UPDATE verified_users SET xp = ?, level = ?, total_posts = ?, last_post_at = ? WHERE id = ?`,
         )
         .run(
           newXp,
@@ -738,10 +567,7 @@ export class BotHistoryManager {
 
       this.db
         .prepare(
-          `
-                INSERT OR REPLACE INTO bot_history (id, guild_id, category_id, display_name, username, first_seen, last_seen, post_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `,
+          `INSERT OR REPLACE INTO bot_history (id, guild_id, category_id, display_name, username, first_seen, last_seen, post_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           bot.id,
@@ -849,10 +675,7 @@ export class WeatherStateManager {
 
       this.db
         .prepare(
-          `
-                INSERT OR REPLACE INTO weather_state (guild_id, current_weather, weights, temperature, last_update, consecutive_hours)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `,
+          `INSERT OR REPLACE INTO weather_state (guild_id, current_weather, weights, temperature, last_update, consecutive_hours) VALUES (?, ?, ?, ?, ?, ?)`,
         )
         .run(
           state.guild_id,
@@ -888,9 +711,7 @@ export class WeatherStateManager {
       const now = new Date().toISOString();
       this.db
         .prepare(
-          `
-                UPDATE weather_state SET weights = ?, last_update = ? WHERE guild_id = ?
-            `,
+          `UPDATE weather_state SET weights = ?, last_update = ? WHERE guild_id = ?`,
         )
         .run(JSON.stringify(newWeights), now, guildId);
 
@@ -916,24 +737,4 @@ export class WeatherStateManager {
       return false;
     }
   }
-}
-
-let dbManager: DatabaseManager | null = null;
-export let timelineConfig: TimelineConfigManager;
-export let dailyEmbedConfig: DailyEmbedConfigManager;
-export let verifiedUsers: VerifiedUserManager;
-export let botHistory: BotHistoryManager;
-export let weatherState: WeatherStateManager;
-
-export async function initDatabase(): Promise<void> {
-  if (dbManager) return;
-
-  dbManager = new DatabaseManager();
-  await dbManager.initTables();
-
-  timelineConfig = new TimelineConfigManager(dbManager.getDatabase());
-  dailyEmbedConfig = new DailyEmbedConfigManager(dbManager.getDatabase());
-  verifiedUsers = new VerifiedUserManager(dbManager.getDatabase());
-  botHistory = new BotHistoryManager(dbManager.getDatabase());
-  weatherState = new WeatherStateManager(dbManager.getDatabase());
 }

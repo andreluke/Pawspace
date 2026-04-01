@@ -1,6 +1,8 @@
 import {
     TimelineConfig,
     DailyEmbedConfig,
+} from "#types";
+import {
     initDatabase,
     timelineConfig,
     dailyEmbedConfig,

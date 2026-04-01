@@ -186,7 +186,7 @@ export function calculateServerDay(
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
 
-    const jsDate = new Date(year, month - 1, day);
+    const jsDate = new Date(year, month - 1, day); 
 
     currentDate = jsDate;
     manualDateStr = `${jsDate.getDate()}/${jsDate.getMonth() + 1}/${jsDate.getFullYear()}`;
