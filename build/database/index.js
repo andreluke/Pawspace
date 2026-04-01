@@ -16,6 +16,7 @@ let dailyEmbedConfig;
 let verifiedUsers;
 let botHistory;
 let weatherState;
+let curiousConfig;
 async function initDatabase() {
   if (dbManager) return;
   dbManager = new DatabaseManager();
@@ -25,6 +26,7 @@ async function initDatabase() {
   verifiedUsers = new VerifiedUserManager(dbManager.getDatabase());
   botHistory = new BotHistoryManager(dbManager.getDatabase());
   weatherState = new WeatherStateManager(dbManager.getDatabase());
+  curiousConfig = new CuriousConfigManager(dbManager.getDatabase());
 }
 class DatabaseManager {
   db;
@@ -558,14 +560,75 @@ class WeatherStateManager {
     }
   }
 }
+function mapCuriousRow(row) {
+  return {
+    guildId: row.guild_id,
+    targetChannel: row.target_channel ?? null,
+    enabled: Boolean(row.enabled),
+    lastUpdate: row.last_update
+  };
+}
+class CuriousConfigManager {
+  constructor(db) {
+    this.db = db;
+  }
+  get(guildId) {
+    try {
+      const row = this.db.prepare("SELECT * FROM curious_config WHERE guild_id = ?").get(guildId);
+      return row ? mapCuriousRow(row) : null;
+    } catch (error) {
+      console.error("[Database] Error getting curious config:", error);
+      return null;
+    }
+  }
+  set(guildId, data) {
+    try {
+      const existing = this.get(guildId);
+      const config = {
+        guild_id: guildId,
+        target_channel: data.targetChannel !== void 0 ? data.targetChannel : existing?.targetChannel ?? null,
+        enabled: data.enabled !== void 0 ? data.enabled ? 1 : 0 : existing?.enabled ? 1 : 0,
+        last_update: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      this.db.prepare(
+        `INSERT OR REPLACE INTO curious_config (guild_id, target_channel, enabled, last_update) VALUES (?, ?, ?, ?)`
+      ).run(
+        config.guild_id,
+        config.target_channel,
+        config.enabled,
+        config.last_update
+      );
+      return {
+        guildId: config.guild_id,
+        targetChannel: config.target_channel,
+        enabled: Boolean(config.enabled),
+        lastUpdate: config.last_update
+      };
+    } catch (error) {
+      console.error("[Database] Error setting curious config:", error);
+      throw error;
+    }
+  }
+  delete(guildId) {
+    try {
+      const result = this.db.prepare("DELETE FROM curious_config WHERE guild_id = ?").run(guildId);
+      return result.changes > 0;
+    } catch (error) {
+      console.error("[Database] Error deleting curious config:", error);
+      return false;
+    }
+  }
+}
 export {
   BotHistoryManager,
+  CuriousConfigManager,
   DailyEmbedConfigManager,
   DatabaseManager,
   TimelineConfigManager,
   VerifiedUserManager,
   WeatherStateManager,
   botHistory,
+  curiousConfig,
   dailyEmbedConfig,
   initDatabase,
   timelineConfig,

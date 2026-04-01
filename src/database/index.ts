@@ -1,6 +1,8 @@
 import {
   BotHistory,
   BotHistoryRow,
+  CuriousConfig,
+  CuriousConfigRow,
   DailyEmbedConfig,
   DailyEmbedConfigRow,
   TimelineConfig,
@@ -32,6 +34,7 @@ export let dailyEmbedConfig: DailyEmbedConfigManager;
 export let verifiedUsers: VerifiedUserManager;
 export let botHistory: BotHistoryManager;
 export let weatherState: WeatherStateManager;
+export let curiousConfig: CuriousConfigManager;
 
 export async function initDatabase(): Promise<void> {
   if (dbManager) return;
@@ -44,6 +47,7 @@ export async function initDatabase(): Promise<void> {
   verifiedUsers = new VerifiedUserManager(dbManager.getDatabase());
   botHistory = new BotHistoryManager(dbManager.getDatabase());
   weatherState = new WeatherStateManager(dbManager.getDatabase());
+  curiousConfig = new CuriousConfigManager(dbManager.getDatabase());
 }
 
 export class DatabaseManager {
@@ -734,6 +738,90 @@ export class WeatherStateManager {
       return result.changes > 0;
     } catch (error) {
       console.error("[Database] Error deleting weather state:", error);
+      return false;
+    }
+  }
+}
+
+function mapCuriousRow(row: CuriousConfigRow): CuriousConfig {
+  return {
+    guildId: row.guild_id,
+    targetChannel: row.target_channel ?? null,
+    enabled: Boolean(row.enabled),
+    lastUpdate: row.last_update,
+  };
+}
+
+export class CuriousConfigManager {
+  constructor(private db: Database.Database) {}
+
+  get(guildId: string): CuriousConfig | null {
+    try {
+      const row = this.db
+        .prepare("SELECT * FROM curious_config WHERE guild_id = ?")
+        .get(guildId) as CuriousConfigRow | undefined;
+      return row ? mapCuriousRow(row) : null;
+    } catch (error) {
+      console.error("[Database] Error getting curious config:", error);
+      return null;
+    }
+  }
+
+  set(
+    guildId: string,
+    data: {
+      targetChannel?: string | null;
+      enabled?: boolean;
+    },
+  ): CuriousConfig {
+    try {
+      const existing = this.get(guildId);
+      const config = {
+        guild_id: guildId,
+        target_channel: data.targetChannel !== undefined 
+          ? data.targetChannel 
+          : existing?.targetChannel ?? null,
+        enabled: data.enabled !== undefined 
+          ? data.enabled 
+            ? 1 
+            : 0 
+          : existing?.enabled 
+            ? 1 
+            : 0,
+        last_update: new Date().toISOString(),
+      };
+
+      this.db
+        .prepare(
+          `INSERT OR REPLACE INTO curious_config (guild_id, target_channel, enabled, last_update) VALUES (?, ?, ?, ?)`,
+        )
+        .run(
+          config.guild_id,
+          config.target_channel,
+          config.enabled,
+          config.last_update,
+        );
+
+      return {
+        guildId: config.guild_id,
+        targetChannel: config.target_channel,
+        enabled: Boolean(config.enabled),
+        lastUpdate: config.last_update,
+      };
+    } catch (error) {
+      console.error("[Database] Error setting curious config:", error);
+      throw error;
+    }
+  }
+
+  delete(guildId: string): boolean {
+    try {
+      const result = this.db
+        .prepare("DELETE FROM curious_config WHERE guild_id = ?")
+        .run(guildId);
+      return result.changes > 0;
+    } catch (error) {
+      console.error("[Database] Error deleting curious config:", error);
       return false;
     }
   }

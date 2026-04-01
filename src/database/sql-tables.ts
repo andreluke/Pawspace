@@ -64,6 +64,14 @@ export const TABLE_DEFINITIONS = {
             consecutive_hours INTEGER DEFAULT 0
         )
     `,
+    curious_config: `
+        CREATE TABLE IF NOT EXISTS curious_config (
+            guild_id TEXT PRIMARY KEY,
+            target_channel TEXT,
+            enabled INTEGER DEFAULT 0,
+            last_update TEXT
+        )
+    `,
 } as const;
 
 export const TABLE_NAMES = Object.keys(TABLE_DEFINITIONS) as (keyof typeof TABLE_DEFINITIONS)[];

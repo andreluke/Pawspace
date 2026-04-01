@@ -135,7 +135,7 @@ export function calculateServerDay(
   );
 
   let periodIndex: number;
-  const dayAfter = saveToDb ? 0 : 1
+  const dayAfter = saveToDb ? 0 : 1;
 
   if (config.periodIndex === null || config.periodIndex === undefined) {
     if (now.getHours() < 6) {
@@ -166,7 +166,9 @@ export function calculateServerDay(
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
   } else {
-    periodIndex = (config.periodIndex + 1 - dayAfter) % 4;
+    const dayMultiplier = config.dayMultiplier === 2 ? 4 : config.dayMultiplier;
+
+    periodIndex = (config.periodIndex + 1 - dayAfter) % dayMultiplier;
 
     if (saveToDb) {
       dailyEmbedConfig.set(guildId, { periodIndex });
@@ -175,10 +177,11 @@ export function calculateServerDay(
 
   const period = PERIOD_ORDER[periodIndex];
 
+  const dayMultiplier = config.dayMultiplier === 2 ? 4 : config.dayMultiplier;
 
   let currentDate: Date;
   let manualDateStr: string;
-  const updateDate = periodIndex == 0 && dayAfter == 0 ? 1 : 0;
+  const updateDate = periodIndex == dayMultiplier && dayAfter == 0 ? 1 : 0;
 
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
@@ -186,7 +189,7 @@ export function calculateServerDay(
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
 
-    const jsDate = new Date(year, month - 1, day); 
+    const jsDate = new Date(year, month - 1, day);
 
     currentDate = jsDate;
     manualDateStr = `${jsDate.getDate()}/${jsDate.getMonth() + 1}/${jsDate.getFullYear()}`;
@@ -353,7 +356,7 @@ export async function sendDailyEmbed(
   const embedData = buildDailyEmbed(guildId, true);
   const embed = createDailyEmbed(embedData);
 
-  weatherSystem.updateWeather(guildId)
+  weatherSystem.updateWeather(guildId);
 
   const attachments = embedData.imagePath ? [embedData.imagePath] : [];
 
