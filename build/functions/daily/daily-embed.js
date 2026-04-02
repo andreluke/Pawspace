@@ -35,6 +35,19 @@ const weatherNames = {
   fog: "Neblina",
   snow: "Neve"
 };
+function getPeriodsPerDay(dayMultiplier, schedulesCount) {
+  if (dayMultiplier === 2) return 4;
+  if (dayMultiplier === 1) {
+    return Math.min(Math.max(schedulesCount, 1), 4);
+  }
+  return dayMultiplier;
+}
+function getMaxSchedules(dayMultiplier) {
+  return dayMultiplier <= 2 ? 4 : 1;
+}
+function getPassDay(periodIndex, periodsPerDay) {
+  return periodIndex == periodsPerDay;
+}
 const weekDays = [
   "Domingo",
   "Segunda",
@@ -45,15 +58,7 @@ const weekDays = [
   "S\xE1bado"
 ];
 function getWeekDay(day) {
-  const weekDay = [
-    "Domingo",
-    "Segunda",
-    "Ter\xE7a",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "S\xE1bado"
-  ][day.getDay()];
+  const weekDay = weekDays[day.getDay()];
   if (weekDay == "Domingo" || weekDay == "S\xE1bado") return weekDay;
   return `${weekDay}-feira`;
 }
@@ -93,18 +98,33 @@ function calculateServerDay(guildId, saveToDb = false) {
     0,
     0
   );
+  const dayMultiplier = config.dayMultiplier;
+  const schedulesCount = config.schedules?.length || 0;
+  const periodsPerDay = getPeriodsPerDay(dayMultiplier, schedulesCount);
   let periodIndex;
   const dayAfter = saveToDb ? 0 : 1;
   if (config.periodIndex === null || config.periodIndex === void 0) {
     if (now.getHours() < 6) {
       periodIndex = 0;
+    } else if (dayMultiplier === 1) {
+      const sortedSchedules = config.schedules.map((s) => parseInt(s.split(":")[0], 10)).filter((h) => h >= 6).sort((a, b) => a - b);
+      if (sortedSchedules.length === 0) {
+        periodIndex = 0;
+      } else if (now.getHours() >= sortedSchedules[0]) {
+        const nextScheduleIndex = sortedSchedules.findIndex(
+          (h) => now.getHours() < h
+        );
+        periodIndex = nextScheduleIndex === -1 ? 0 : nextScheduleIndex;
+      } else {
+        periodIndex = sortedSchedules.length - 1;
+      }
     } else {
       const sortedSchedules = config.schedules.map((s) => parseInt(s.split(":")[0], 10)).filter((h) => h >= 6).sort((a, b) => a - b);
       if (sortedSchedules.length === 0) {
         periodIndex = 1;
       } else if (now.getHours() >= sortedSchedules[0]) {
         periodIndex = Math.min(
-          2,
+          periodsPerDay - 1,
           1 + sortedSchedules.indexOf(
             sortedSchedules.find((h) => now.getHours() < h) || sortedSchedules[0]
           )
@@ -117,7 +137,7 @@ function calculateServerDay(guildId, saveToDb = false) {
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
   } else {
-    periodIndex = (config.periodIndex + 1 - dayAfter) % 4;
+    periodIndex = (config.periodIndex + 1 - dayAfter) % periodsPerDay;
     if (saveToDb) {
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
@@ -125,7 +145,7 @@ function calculateServerDay(guildId, saveToDb = false) {
   const period = PERIOD_ORDER[periodIndex];
   let currentDate;
   let manualDateStr;
-  const updateDate = periodIndex == 0 && dayAfter == 0 ? 1 : 0;
+  const updateDate = getPassDay(periodIndex, periodsPerDay) && dayAfter == 0 ? 1 : 0;
   if (config.manualDate) {
     const parts = config.manualDate.split("/");
     const day = parseInt(parts[0], 10) + updateDate;
@@ -275,6 +295,9 @@ export {
   buildDailyEmbed,
   calculateServerDay,
   createDailyEmbed,
+  getMaxSchedules,
+  getPassDay,
+  getPeriodsPerDay,
   getWeatherImagePath,
   sendDailyEmbed
 };

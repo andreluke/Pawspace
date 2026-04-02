@@ -18,20 +18,30 @@ createResponder({
 		const guild = interaction.guild;
 		if (!guild) return;
 
-		await getTimelineConfig(guild.id);
+		const config = await getTimelineConfig(guild.id);
+
+		const timelineChannelName = config?.timelineChannel
+			? guild.channels.cache.get(config.timelineChannel)?.name
+			: null;
 
 		const channelSelect = new ChannelSelectMenuBuilder({
 			customId: "timeline-config/select/channel",
 			channelTypes: [0],
-			placeholder: "Selecione o canal de timeline",
+			placeholder: timelineChannelName || "Selecione o canal de timeline",
 			minValues: 0,
 			maxValues: 1,
 		});
 
+		const categoryNames = config?.chatCategories?.length
+			? guild.channels.cache.filter(ch => config.chatCategories.includes(ch.id)).map(ch => ch.name).join(", ")
+			: null;
+
 		const categorySelect = new ChannelSelectMenuBuilder({
 			customId: "timeline-config/select/category",
 			channelTypes: [4],
-			placeholder: "Selecione as categorias de chat",
+			placeholder: categoryNames
+				? categoryNames.slice(0, 50) + (categoryNames.length > 50 ? "..." : "")
+				: "Selecione as categorias de chat",
 			minValues: 0,
 			maxValues: 25,
 		});

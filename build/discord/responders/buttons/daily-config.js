@@ -66,7 +66,7 @@ createResponder({
         startDay: Math.min(31, Math.max(1, day)),
         startMonth: Math.min(12, Math.max(1, month)),
         startYear: year,
-        dayMultiplier: Math.min(3, Math.max(1, multiplier))
+        dayMultiplier: Math.min(4, Math.max(1, multiplier))
       });
       await interaction.reply({
         content: `\u2705 Dia inicial configurado: ${day}/${month}/${year} (1 dia jogo = ${multiplier} dias real)!`,
@@ -142,12 +142,18 @@ createResponder({
     if (!guild) return;
     const schedules = interaction.values;
     const config = getDailyEmbedConfig(guild.id);
-    const currentSchedules = config?.schedules || [];
-    const newSchedules = [.../* @__PURE__ */ new Set([...currentSchedules, ...schedules])].slice(0, 4);
-    setDailyEmbedConfig(guild.id, { schedules: newSchedules });
-    updateGuildSchedule(guild.id, newSchedules);
+    const dayMultiplier = config?.dayMultiplier || 2;
+    if (dayMultiplier === 2 && (schedules.length === 1 || schedules.length === 3)) {
+      await interaction.reply({
+        content: "\u26A0\uFE0F Com 2x dayMultiplier, o n\xFAmero de hor\xE1rios deve ser 2 ou 4.",
+        flags: ["Ephemeral"]
+      });
+      return;
+    }
+    setDailyEmbedConfig(guild.id, { schedules });
+    updateGuildSchedule(guild.id, schedules);
     await interaction.reply({
-      content: `\u2705 Hor\xE1rios configurados: ${newSchedules.join(", ")}`,
+      content: `\u2705 Hor\xE1rios configurados: ${schedules.join(", ")}`,
       flags: ["Ephemeral"]
     });
   }
