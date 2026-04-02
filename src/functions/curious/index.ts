@@ -1,5 +1,5 @@
-import { Guild, TextChannel } from "discord.js";
 import { curiousConfig } from "#database";
+import { EmbedBuilder, Guild, TextChannel } from "discord.js";
 
 const userTimestamps = new Map<string, number>();
 const RATE_LIMIT_MS = 2000;
@@ -28,17 +28,18 @@ export async function sendCuriousMessage(
     return false;
   }
 
+  const embed = new EmbedBuilder()
+    .setColor(0x9b59b6)
+    .setTitle("💭 " + (config.customTitle || "Curious Hog"))
+    .setDescription(`${message}`)
+    .setTimestamp()
+    .setFooter({
+      text: "Enviaram uma nova mensagem",
+      iconURL: "https://cdn.discordapp.com/attachments/1187843045530550434/1486903967123247144/IMG-20260309-WA0377.jpg?ex=69ce72fb&is=69cd217b&hm=13993b55d2d759b0d05125bc38155a5f18e8fd641d758e1a10dffa0cfa7a87df&",
+    });
+
   await channel.send({
-    embeds: [
-      {
-        color: 0x9b59b6,
-        description: message,
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: "💭 Curious",
-        },
-      },
-    ],
+    embeds: [embed],
   });
 
   return true;

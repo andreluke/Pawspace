@@ -1,9 +1,8 @@
 import { createResponder } from "#base";
 import { getDailyEmbedConfig, getTimelineConfig } from "#config";
-import { weatherSystem } from "#functions";
 import { curiousConfig } from "#database";
-import { createRow } from "@magicyan/discord";
 import { ResponderType } from "@constatic/base";
+import { createRow } from "@magicyan/discord";
 import {
   ButtonBuilder,
   ButtonStyle,
@@ -71,6 +70,12 @@ createResponder({
     }
     const row = createRow(
       new ButtonBuilder({
+        customId: "pawspace-config/back",
+        label: "Voltar",
+        style: ButtonStyle.Secondary,
+        emoji: "\u2B05\uFE0F"
+      }),
+      new ButtonBuilder({
         customId: "timeline-config/edit",
         label: "Editar Configura\xE7\xF5es",
         style: ButtonStyle.Primary,
@@ -91,7 +96,6 @@ createResponder({
     const guild = interaction.guild;
     if (!guild) return;
     const config = getDailyEmbedConfig(guild.id);
-    const currentTemp = weatherSystem.getTemperature(guild.id);
     const embed = new EmbedBuilder().setTitle("\u{1F4C5} Configura\xE7\xF5es de Embed Di\xE1rio").setColor(5793266).setDescription(
       config ? "Configure o sistema de embed di\xE1rio do servidor." : "Este servidor ainda n\xE3o foi configurado."
     ).addFields(
@@ -122,7 +126,7 @@ createResponder({
       },
       {
         name: "\u{1F321}\uFE0F Temperatura",
-        value: currentTemp !== null ? `${currentTemp}\xB0C` : "*Autom\xE1tico*",
+        value: config?.fixedTemperature !== null ? `${config?.fixedTemperature}\xB0C` : "*Autom\xE1tico*",
         inline: true
       },
       {
@@ -156,43 +160,74 @@ createResponder({
       }),
       new ButtonBuilder({
         customId: "daily-config/temperature",
-        label: currentTemp !== null ? "Limpar Temp" : "Setar Temp",
-        style: currentTemp !== null ? ButtonStyle.Danger : ButtonStyle.Success,
+        label: config?.fixedTemperature !== null ? "Limpar Temp" : "Setar Temp",
+        style: config?.fixedTemperature !== null ? ButtonStyle.Danger : ButtonStyle.Success,
         emoji: "\u{1F321}\uFE0F"
       })
     );
+    const dailyChannel = config?.channelId ? guild.channels.cache.get(config.channelId)?.name : null;
     const row2 = createRow(
       new ChannelSelectMenuBuilder({
         customId: "daily-config/channel-select",
         channelTypes: [0, 5],
-        placeholder: "Selecionar Canal de Embed",
+        placeholder: dailyChannel || "Selecionar Canal de Embed",
         minValues: 0,
         maxValues: 1
       })
     );
+    const currentWeather = config?.weatherMode === "fixed" && config?.weatherFixedType ? config.weatherFixedType : "dynamic";
     const row3 = createRow(
       new StringSelectMenuBuilder({
         customId: "daily-config/schedules",
-        placeholder: "Adicionar Hor\xE1rios",
+        placeholder: config?.schedules?.length ? `Hor\xE1rios (${config.schedules.length})` : "Adicionar Hor\xE1rios",
         minValues: 1,
         maxValues: 4,
-        options: TIME_OPTIONS
+        options: TIME_OPTIONS.map((opt) => ({
+          ...opt,
+          default: config?.schedules?.includes(opt.value) || false
+        }))
       })
     );
     const row4 = createRow(
       new StringSelectMenuBuilder({
         customId: "daily-config/weather",
-        placeholder: "Clima",
+        placeholder: config?.weatherMode === "fixed" ? `${getWeatherEmoji(config.weatherFixedType)} ${config.weatherFixedType}` : "\u{1F504} Din\xE2mico",
         options: [
-          { label: "\u{1F504} Din\xE2mico", value: "dynamic" },
-          { label: "\u2600\uFE0F Limpo", value: "sun" },
-          { label: "\u{1F327}\uFE0F Chuva", value: "rain" },
-          { label: "\u{1F32B}\uFE0F Neblina", value: "fog" },
-          { label: "\u2744\uFE0F Neve", value: "snow" }
+          {
+            label: "\u{1F504} Din\xE2mico",
+            value: "dynamic",
+            default: currentWeather === "dynamic"
+          },
+          {
+            label: "\u2600\uFE0F Limpo",
+            value: "sun",
+            default: currentWeather === "sun"
+          },
+          {
+            label: "\u{1F327}\uFE0F Chuva",
+            value: "rain",
+            default: currentWeather === "rain"
+          },
+          {
+            label: "\u{1F32B}\uFE0F Neblina",
+            value: "fog",
+            default: currentWeather === "fog"
+          },
+          {
+            label: "\u2744\uFE0F Neve",
+            value: "snow",
+            default: currentWeather === "snow"
+          }
         ]
       })
     );
     const row5 = createRow(
+      new ButtonBuilder({
+        customId: "pawspace-config/back",
+        label: "Voltar",
+        style: ButtonStyle.Secondary,
+        emoji: "\u2B05\uFE0F"
+      }),
       new ButtonBuilder({
         customId: "daily-config/toggle",
         label: config?.enabled ? "Desativar" : "Ativar",
@@ -228,21 +263,39 @@ createResponder({
         inline: true
       },
       {
+        name: "\u{1F4DD} T\xEDtulo Personalizado",
+        value: config?.customTitle || "Curious Hog",
+        inline: true
+      },
+      {
         name: "\u26A1 Status",
         value: config?.enabled ? "\u2705 Ativado" : "\u274C Desativado",
         inline: true
       }
     );
+    const curiousChannel = config?.targetChannel ? guild.channels.cache.get(config.targetChannel)?.name : null;
     const row1 = createRow(
       new ChannelSelectMenuBuilder({
         customId: "curious-config/channel-select",
         channelTypes: [0],
-        placeholder: "Selecionar Canal Alvo",
+        placeholder: curiousChannel || "Selecionar Canal Alvo",
         minValues: 0,
         maxValues: 1
       })
     );
     const row2 = createRow(
+      new ButtonBuilder({
+        customId: "pawspace-config/back",
+        label: "Voltar",
+        style: ButtonStyle.Secondary,
+        emoji: "\u2B05\uFE0F"
+      }),
+      new ButtonBuilder({
+        customId: "curious-config/edit-title",
+        label: "Editar T\xEDtulo",
+        style: ButtonStyle.Secondary,
+        emoji: "\u{1F4DD}"
+      }),
       new ButtonBuilder({
         customId: "curious-config/toggle",
         label: config?.enabled ? "Desativar" : "Ativar",
@@ -258,6 +311,42 @@ createResponder({
     await interaction.update({
       embeds: [embed],
       components: [row1, row2]
+    });
+  }
+});
+createResponder({
+  customId: "pawspace-config/back",
+  types: [ResponderType.Button],
+  cache: "cached",
+  async run(interaction) {
+    const guild = interaction.guild;
+    if (!guild) return;
+    const embed = new EmbedBuilder().setTitle("\u2699\uFE0F Configura\xE7\xF5es do Pawspace").setColor(5793266).setDescription(
+      "Configure os sistemas do Pawspace usando os bot\xF5es abaixo."
+    );
+    const row1 = createRow(
+      new ButtonBuilder({
+        customId: "pawspace-config/timeline",
+        label: "Timeline",
+        style: ButtonStyle.Primary,
+        emoji: "\u{1F4DC}"
+      }),
+      new ButtonBuilder({
+        customId: "pawspace-config/daily",
+        label: "Daily",
+        style: ButtonStyle.Primary,
+        emoji: "\u{1F4C5}"
+      }),
+      new ButtonBuilder({
+        customId: "pawspace-config/curious",
+        label: "Curious",
+        style: ButtonStyle.Primary,
+        emoji: "\u{1F4AD}"
+      })
+    );
+    await interaction.update({
+      embeds: [embed],
+      components: [row1]
     });
   }
 });

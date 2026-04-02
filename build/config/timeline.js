@@ -53,6 +53,26 @@ function getDailyEmbedConfig(guildId) {
   return dailyEmbedConfig.get(guildId);
 }
 function setDailyEmbedConfig(guildId, data) {
+  const existing = dailyEmbedConfig.get(guildId);
+  if (data.dayMultiplier !== void 0) {
+    if (existing && existing.dayMultiplier !== data.dayMultiplier) {
+      data.schedules = [];
+      data.periodIndex = null;
+    }
+  }
+  if (data.schedules !== void 0 && existing) {
+    const multiplier = data.dayMultiplier ?? existing.dayMultiplier ?? 2;
+    let maxSchedules = 4;
+    if (multiplier === 1) maxSchedules = 4;
+    else if (multiplier === 2) maxSchedules = 4;
+    else maxSchedules = 1;
+    if (data.schedules.length > maxSchedules) {
+      data.schedules = data.schedules.slice(0, maxSchedules);
+    }
+    if (multiplier === 2 && (data.schedules.length === 1 || data.schedules.length === 3)) {
+      data.schedules = [];
+    }
+  }
   return dailyEmbedConfig.set(guildId, data);
 }
 function clearDailyEmbedConfig(guildId) {

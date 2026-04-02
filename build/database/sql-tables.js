@@ -69,6 +69,7 @@ const TABLE_DEFINITIONS = {
             guild_id TEXT PRIMARY KEY,
             target_channel TEXT,
             enabled INTEGER DEFAULT 0,
+            custom_title TEXT DEFAULT 'Curious Hog',
             last_update TEXT
         )
     `

@@ -5,8 +5,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-  GuildMember,
-  StringSelectMenuBuilder
+  GuildMember
 } from "discord.js";
 async function isModerator(member) {
   if (!member.permissions) return false;
@@ -55,20 +54,9 @@ createCommand({
         emoji: "\u{1F4AD}"
       })
     );
-    const row2 = createRow(
-      new StringSelectMenuBuilder({
-        customId: "pawspace-config/system-select",
-        placeholder: "Selecione um sistema",
-        options: [
-          { label: "\u{1F4DC} Timeline", value: "timeline" },
-          { label: "\u{1F4C5} Daily Embed", value: "daily" },
-          { label: "\u{1F4AD} Curious", value: "curious" }
-        ]
-      })
-    );
     await interaction.reply({
       embeds: [embed],
-      components: [row1, row2],
+      components: [row1],
       flags: ["Ephemeral"]
     });
   }

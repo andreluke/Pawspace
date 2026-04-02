@@ -44,6 +44,27 @@ const weatherNames: Record<WeatherType, string> = {
   snow: "Neve",
 };
 
+export function getPeriodsPerDay(
+  dayMultiplier: number,
+  schedulesCount: number,
+): number {
+  if (dayMultiplier === 2) return 4;
+
+  if (dayMultiplier === 1) {
+    return Math.min(Math.max(schedulesCount, 1), 4);
+  }
+
+  return dayMultiplier;
+}
+
+export function getMaxSchedules(dayMultiplier: number): number {
+  return dayMultiplier <= 2 ? 4 : 1;
+}
+
+export function getPassDay(periodIndex: number, periodsPerDay: number) {
+  return periodIndex == periodsPerDay;
+}
+
 export interface DailyEmbedData {
   serverDay: number;
   serverMonth: string;
@@ -68,18 +89,8 @@ const weekDays = [
   "Sábado",
 ] as const;
 
-type WeekDay = (typeof weekDays)[number];
-
 function getWeekDay(day: Date) {
-  const weekDay = [
-    "Domingo",
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-  ][day.getDay()] as WeekDay;
+  const weekDay = weekDays[day.getDay()];
 
   if (weekDay == "Domingo" || weekDay == "Sábado") return weekDay;
 
@@ -134,12 +145,32 @@ export function calculateServerDay(
     0,
   );
 
+  const dayMultiplier = config.dayMultiplier;
+  const schedulesCount = config.schedules?.length || 0;
+  const periodsPerDay = getPeriodsPerDay(dayMultiplier, schedulesCount);
+
   let periodIndex: number;
   const dayAfter = saveToDb ? 0 : 1;
 
   if (config.periodIndex === null || config.periodIndex === undefined) {
     if (now.getHours() < 6) {
       periodIndex = 0;
+    } else if (dayMultiplier === 1) {
+      const sortedSchedules = config.schedules
+        .map((s) => parseInt(s.split(":")[0], 10))
+        .filter((h) => h >= 6)
+        .sort((a, b) => a - b);
+
+      if (sortedSchedules.length === 0) {
+        periodIndex = 0;
+      } else if (now.getHours() >= sortedSchedules[0]) {
+        const nextScheduleIndex = sortedSchedules.findIndex(
+          (h) => now.getHours() < h,
+        );
+        periodIndex = nextScheduleIndex === -1 ? 0 : nextScheduleIndex;
+      } else {
+        periodIndex = sortedSchedules.length - 1;
+      }
     } else {
       const sortedSchedules = config.schedules
         .map((s) => parseInt(s.split(":")[0], 10))
@@ -150,7 +181,7 @@ export function calculateServerDay(
         periodIndex = 1;
       } else if (now.getHours() >= sortedSchedules[0]) {
         periodIndex = Math.min(
-          2,
+          periodsPerDay - 1,
           1 +
             sortedSchedules.indexOf(
               sortedSchedules.find((h) => now.getHours() < h) ||
@@ -166,9 +197,7 @@ export function calculateServerDay(
       dailyEmbedConfig.set(guildId, { periodIndex });
     }
   } else {
-    const dayMultiplier = config.dayMultiplier === 2 ? 4 : config.dayMultiplier;
-
-    periodIndex = (config.periodIndex + 1 - dayAfter) % dayMultiplier;
+    periodIndex = (config.periodIndex + 1 - dayAfter) % periodsPerDay;
 
     if (saveToDb) {
       dailyEmbedConfig.set(guildId, { periodIndex });
@@ -177,11 +206,10 @@ export function calculateServerDay(
 
   const period = PERIOD_ORDER[periodIndex];
 
-  const dayMultiplier = config.dayMultiplier === 2 ? 4 : config.dayMultiplier;
-
   let currentDate: Date;
   let manualDateStr: string;
-  const updateDate = periodIndex == dayMultiplier && dayAfter == 0 ? 1 : 0;
+  const updateDate =
+    getPassDay(periodIndex, periodsPerDay) && dayAfter == 0 ? 1 : 0;
 
   if (config.manualDate) {
     const parts = config.manualDate.split("/");

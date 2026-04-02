@@ -748,6 +748,7 @@ function mapCuriousRow(row: CuriousConfigRow): CuriousConfig {
     guildId: row.guild_id,
     targetChannel: row.target_channel ?? null,
     enabled: Boolean(row.enabled),
+    customTitle: row.custom_title ?? null,
     lastUpdate: row.last_update,
   };
 }
@@ -772,6 +773,7 @@ export class CuriousConfigManager {
     data: {
       targetChannel?: string | null;
       enabled?: boolean;
+      customTitle?: string | null;
     },
   ): CuriousConfig {
     try {
@@ -788,17 +790,21 @@ export class CuriousConfigManager {
           : existing?.enabled 
             ? 1 
             : 0,
+        custom_title: data.customTitle !== undefined
+          ? data.customTitle
+          : existing?.customTitle ?? "Curious Hog",
         last_update: new Date().toISOString(),
       };
 
       this.db
         .prepare(
-          `INSERT OR REPLACE INTO curious_config (guild_id, target_channel, enabled, last_update) VALUES (?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO curious_config (guild_id, target_channel, enabled, custom_title, last_update) VALUES (?, ?, ?, ?, ?)`,
         )
         .run(
           config.guild_id,
           config.target_channel,
           config.enabled,
+          config.custom_title,
           config.last_update,
         );
 
@@ -806,6 +812,7 @@ export class CuriousConfigManager {
         guildId: config.guild_id,
         targetChannel: config.target_channel,
         enabled: Boolean(config.enabled),
+        customTitle: config.custom_title,
         lastUpdate: config.last_update,
       };
     } catch (error) {
