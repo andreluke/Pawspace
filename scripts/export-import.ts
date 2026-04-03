@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, "..", "pawspace.db");
@@ -13,6 +13,7 @@ const TABLES = [
     "verified_users",
     "bot_history",
     "weather_state",
+    "curious_config"
 ];
 
 function exportData(): void {

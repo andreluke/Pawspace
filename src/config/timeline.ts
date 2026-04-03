@@ -3,7 +3,6 @@ import {
     DailyEmbedConfig,
 } from "#types";
 import {
-    initDatabase,
     timelineConfig,
     dailyEmbedConfig,
 } from "#database";
@@ -131,5 +130,3 @@ export function clearDailyEmbedConfig(guildId: string): boolean {
 export function getAllDailyEmbedConfigs(): DailyEmbedConfig[] {
     return dailyEmbedConfig.getAll();
 }
-
-export { initDatabase };

@@ -1,5 +1,4 @@
 import {
-  initDatabase,
   timelineConfig,
   dailyEmbedConfig
 } from "#database";
@@ -89,7 +88,6 @@ export {
   getDailyEmbedConfig,
   getTimelineConfig,
   getVerifiedUsers,
-  initDatabase,
   isVerifiedUser,
   removeVerifiedUser,
   setDailyEmbedConfig,

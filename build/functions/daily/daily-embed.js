@@ -104,7 +104,7 @@ function calculateServerDay(guildId, saveToDb = false) {
   let periodIndex;
   const dayAfter = saveToDb ? 0 : 1;
   if (config.periodIndex === null || config.periodIndex === void 0) {
-    if (now.getHours() < 6) {
+    if (now.getHours() < 6 || dayMultiplier >= 3) {
       periodIndex = 0;
     } else if (dayMultiplier === 1) {
       const sortedSchedules = config.schedules.map((s) => parseInt(s.split(":")[0], 10)).filter((h) => h >= 6).sort((a, b) => a - b);
