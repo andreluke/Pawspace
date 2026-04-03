@@ -21,7 +21,8 @@ createCommand({
       }
     ).setTimestamp();
     await interaction.reply({
-      embeds: [embed]
+      embeds: [embed],
+      flags: ["Ephemeral"]
     });
   }
 });

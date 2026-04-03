@@ -153,7 +153,7 @@ export function calculateServerDay(
   const dayAfter = saveToDb ? 0 : 1;
 
   if (config.periodIndex === null || config.periodIndex === undefined) {
-    if (now.getHours() < 6) {
+    if (now.getHours() < 6 || dayMultiplier >= 3) {
       periodIndex = 0;
     } else if (dayMultiplier === 1) {
       const sortedSchedules = config.schedules
