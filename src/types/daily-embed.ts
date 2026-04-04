@@ -18,6 +18,7 @@ export interface DailyEmbedConfigRow {
   period_index: number | null;
   fixed_temperature: number | null;
   last_update: string | null;
+  last_embed_message_id: string | null;
 }
 
 export interface DailyEmbedConfig {
@@ -38,4 +39,5 @@ export interface DailyEmbedConfig {
   periodIndex: number | null;
   fixedTemperature: number | null;
   lastUpdate: string | null;
+  lastEmbedMessageId: string | null;
 }

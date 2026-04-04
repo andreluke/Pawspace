@@ -62,7 +62,8 @@ export function getMaxSchedules(dayMultiplier: number): number {
 }
 
 export function getPassDay(periodIndex: number, periodsPerDay: number) {
-  return periodIndex == periodsPerDay;
+  if (periodsPerDay > 3) return periodIndex == periodsPerDay - 1;
+  return periodIndex === 0;
 }
 
 export interface DailyEmbedData {
@@ -377,19 +378,38 @@ function getWeatherFileName(period: PeriodType, weather: WeatherType): string {
 export async function sendDailyEmbed(
   guildId: string,
   channel: any,
+  editExisting = false,
 ): Promise<void> {
   const config = dailyEmbedConfig.get(guildId);
   if (!config || !config.enabled || !config.channelId) return;
 
+  weatherSystem.updateWeather(guildId);
+
   const embedData = buildDailyEmbed(guildId, true);
   const embed = createDailyEmbed(embedData);
 
-  weatherSystem.updateWeather(guildId);
-
   const attachments = embedData.imagePath ? [embedData.imagePath] : [];
 
-  await channel.send({
+  if (editExisting && config.lastEmbedMessageId) {
+    let message = null;
+    try {
+      message = await channel.messages.fetch(config.lastEmbedMessageId);
+    } catch {
+      message = null;
+    }
+
+    if (message) {
+      await message.edit({
+        embeds: [embed],
+        files: attachments.length > 0 ? attachments : undefined,
+      });
+      return;
+    }
+  }
+
+  const newMessage = await channel.send({
     embeds: [embed],
     files: attachments.length > 0 ? attachments : undefined,
   });
+  dailyEmbedConfig.set(guildId, { lastEmbedMessageId: newMessage.id });
 }

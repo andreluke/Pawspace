@@ -8,7 +8,7 @@ const statements = {
   },
   daily: {
     get: db.prepare("SELECT * FROM daily_embed_config WHERE guild_id = ?"),
-    set: db.prepare("INSERT OR REPLACE INTO daily_embed_config (guild_id, channel_id, start_day, start_month, start_year, schedules, day_multiplier, weather_mode, weather_fixed_type, weather_weights, enabled, manual_date, period_index, fixed_temperature, last_update) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+    set: db.prepare("INSERT OR REPLACE INTO daily_embed_config (guild_id, channel_id, start_day, start_month, start_year, schedules, day_multiplier, weather_mode, weather_fixed_type, weather_weights, enabled, manual_date, period_index, fixed_temperature, last_update, last_embed_message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
     delete: db.prepare("DELETE FROM daily_embed_config WHERE guild_id = ?"),
     getAll: db.prepare("SELECT * FROM daily_embed_config")
   },

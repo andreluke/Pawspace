@@ -155,6 +155,7 @@ export class DailyEmbedConfigManager extends BaseManager<
       manualDate?: string | null;
       periodIndex?: number | null;
       fixedTemperature?: number | null;
+      lastEmbedMessageId?: string | null;
     },
   ): DailyEmbedConfig {
     try {
@@ -176,6 +177,7 @@ export class DailyEmbedConfigManager extends BaseManager<
         fixedTemperature: null,
         currentServerDay: 1,
         currentPeriod: "morning",
+        lastEmbedMessageId: null,
       });
 
       const config = {
@@ -194,6 +196,7 @@ export class DailyEmbedConfigManager extends BaseManager<
         period_index: merged.periodIndex,
         fixed_temperature: merged.fixedTemperature,
         last_update: now,
+        last_embed_message_id: merged.lastEmbedMessageId ?? null,
       };
 
       statements.daily.set.run(
@@ -212,6 +215,7 @@ export class DailyEmbedConfigManager extends BaseManager<
         config.period_index,
         config.fixed_temperature,
         config.last_update,
+        config.last_embed_message_id,
       );
 
       return {
@@ -232,6 +236,7 @@ export class DailyEmbedConfigManager extends BaseManager<
         periodIndex: config.period_index,
         fixedTemperature: config.fixed_temperature,
         lastUpdate: config.last_update,
+        lastEmbedMessageId: config.last_embed_message_id,
       };
     } catch (error) {
       console.error("[Database] Error setting daily embed config:", error);
