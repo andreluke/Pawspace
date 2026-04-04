@@ -279,17 +279,33 @@ function getPeriodColor(period) {
 function getWeatherFileName(period, weather) {
   return `${weather}_${period}.png`;
 }
-async function sendDailyEmbed(guildId, channel) {
+async function sendDailyEmbed(guildId, channel, editExisting = false) {
   const config = dailyEmbedConfig.get(guildId);
   if (!config || !config.enabled || !config.channelId) return;
+  weatherSystem.updateWeather(guildId);
   const embedData = buildDailyEmbed(guildId, true);
   const embed = createDailyEmbed(embedData);
-  weatherSystem.updateWeather(guildId);
   const attachments = embedData.imagePath ? [embedData.imagePath] : [];
-  await channel.send({
+  if (editExisting && config.lastEmbedMessageId) {
+    let message = null;
+    try {
+      message = await channel.messages.fetch(config.lastEmbedMessageId);
+    } catch {
+      message = null;
+    }
+    if (message) {
+      await message.edit({
+        embeds: [embed],
+        files: attachments.length > 0 ? attachments : void 0
+      });
+      return;
+    }
+  }
+  const newMessage = await channel.send({
     embeds: [embed],
     files: attachments.length > 0 ? attachments : void 0
   });
+  dailyEmbedConfig.set(guildId, { lastEmbedMessageId: newMessage.id });
 }
 export {
   buildDailyEmbed,

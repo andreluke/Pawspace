@@ -32,7 +32,8 @@ function mapDailyEmbedRow(row) {
     manualDate: row.manual_date ?? null,
     periodIndex: row.period_index ?? null,
     fixedTemperature: row.fixed_temperature ?? null,
-    lastUpdate: row.last_update
+    lastUpdate: row.last_update,
+    lastEmbedMessageId: row.last_embed_message_id ?? null
   };
 }
 function mapVerifiedUserRow(row) {

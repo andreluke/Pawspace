@@ -51,6 +51,7 @@ function mapDailyEmbedRow(row: DailyEmbedConfigRow): DailyEmbedConfig {
     periodIndex: row.period_index ?? null,
     fixedTemperature: row.fixed_temperature ?? null,
     lastUpdate: row.last_update,
+    lastEmbedMessageId: row.last_embed_message_id ?? null,
   };
 }
 

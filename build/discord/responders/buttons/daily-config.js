@@ -2,8 +2,198 @@ import { createResponder } from "#base";
 import { clearDailyEmbedConfig, getDailyEmbedConfig, setDailyEmbedConfig } from "#config";
 import { sendDailyEmbed, weatherSystem } from "#functions";
 import { ResponderType } from "@constatic/base";
-import { ModalBuilder, TextChannel, TextInputBuilder, TextInputStyle } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelSelectMenuBuilder,
+  EmbedBuilder,
+  ModalBuilder,
+  StringSelectMenuBuilder,
+  TextChannel,
+  TextInputBuilder,
+  TextInputStyle
+} from "discord.js";
 import { updateGuildSchedule } from "../../events/daily-embed.js";
+const TIME_OPTIONS = [
+  { label: "06:00", value: "06:00", default: false },
+  { label: "07:00", value: "07:00", default: false },
+  { label: "08:00", value: "08:00", default: false },
+  { label: "09:00", value: "09:00", default: false },
+  { label: "10:00", value: "10:00", default: false },
+  { label: "11:00", value: "11:00", default: false },
+  { label: "12:00", value: "12:00", default: false },
+  { label: "13:00", value: "13:00", default: false },
+  { label: "14:00", value: "14:00", default: false },
+  { label: "15:00", value: "15:00", default: false },
+  { label: "16:00", value: "16:00", default: false },
+  { label: "17:00", value: "17:00", default: false },
+  { label: "18:00", value: "18:00", default: false },
+  { label: "19:00", value: "19:00", default: false },
+  { label: "20:00", value: "20:00", default: false },
+  { label: "21:00", value: "21:00", default: false },
+  { label: "22:00", value: "22:00", default: false },
+  { label: "23:00", value: "23:00", default: false },
+  { label: "00:00", value: "00:00", default: false },
+  { label: "01:00", value: "01:00", default: false },
+  { label: "02:00", value: "02:00", default: false },
+  { label: "03:00", value: "03:00", default: false },
+  { label: "04:00", value: "04:00", default: false },
+  { label: "05:00", value: "05:00", default: false }
+];
+async function refreshDailyEmbed(interaction) {
+  const guild = interaction.guild;
+  if (!guild) return;
+  const config = getDailyEmbedConfig(guild.id);
+  const embed = new EmbedBuilder().setTitle("\u{1F4C5} Configura\xE7\xF5es de Embed Di\xE1rio").setColor(5793266).setDescription(
+    config ? "Configure o sistema de embed di\xE1rio do servidor." : "Este servidor ainda n\xE3o foi configurado."
+  ).addFields(
+    {
+      name: "\u{1F4FA} Canal",
+      value: config?.channelId ? `<#${config.channelId}>` : "*N\xE3o configurado*",
+      inline: true
+    },
+    {
+      name: "\u{1F4C6} Dia Inicial",
+      value: config ? `${config.startDay}/${config.startMonth}` : "*N\xE3o configurado*",
+      inline: true
+    },
+    {
+      name: "\u23F0 Multiplicador de Dias",
+      value: config ? `${config.dayMultiplier}x` : "2x",
+      inline: true
+    },
+    {
+      name: "\u{1F550} Hor\xE1rios",
+      value: config?.schedules?.length ? config.schedules.map((s) => `\u2022 ${s}`).join("\n") : "*Nenhum hor\xE1rio configurado*",
+      inline: false
+    },
+    {
+      name: "\u{1F324}\uFE0F Clima",
+      value: config?.weatherMode === "fixed" ? `Fixo: ${getWeatherEmoji(config.weatherFixedType)} ${config.weatherFixedType}` : "\u{1F504} Din\xE2mico",
+      inline: true
+    },
+    {
+      name: "\u{1F321}\uFE0F Temperatura",
+      value: config?.fixedTemperature !== null ? `${config?.fixedTemperature}\xB0C` : "*Autom\xE1tico*",
+      inline: true
+    },
+    {
+      name: "\u26A1 Status",
+      value: config?.enabled ? "\u2705 Ativado" : "\u274C Desativado",
+      inline: true
+    },
+    {
+      name: "\u{1F4C5} Dia Atual",
+      value: config?.manualDate ? config.manualDate : "*Autom\xE1tico*",
+      inline: true
+    },
+    {
+      name: "\u{1F4DD} Data Inicial",
+      value: `${config?.startDay || 1}/${config?.startMonth || 1}/${config?.startYear || 2024}`,
+      inline: true
+    }
+  );
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder({
+      customId: "daily-config/start-day",
+      label: "Dia Inicial",
+      style: ButtonStyle.Primary,
+      emoji: "\u{1F4C6}"
+    }),
+    new ButtonBuilder({
+      customId: "daily-config/manual-day",
+      label: "Data Atual",
+      style: ButtonStyle.Secondary,
+      emoji: "\u{1F4DD}"
+    }),
+    new ButtonBuilder({
+      customId: "daily-config/temperature",
+      label: config?.fixedTemperature !== null ? "Limpar Temp" : "Setar Temp",
+      style: config?.fixedTemperature !== null ? ButtonStyle.Danger : ButtonStyle.Success,
+      emoji: "\u{1F321}\uFE0F"
+    })
+  );
+  const dailyChannel = config?.channelId ? guild.channels.cache.get(config.channelId)?.name : null;
+  const row2 = new ActionRowBuilder().addComponents(
+    new ChannelSelectMenuBuilder({
+      customId: "daily-config/channel-select",
+      channelTypes: [0, 5],
+      placeholder: dailyChannel || "Selecionar Canal de Embed",
+      minValues: 0,
+      maxValues: 1
+    })
+  );
+  const currentWeather = config?.weatherMode === "fixed" && config?.weatherFixedType ? config.weatherFixedType : "dynamic";
+  const row3 = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder({
+      customId: "daily-config/schedules",
+      placeholder: config?.schedules?.length ? `Hor\xE1rios (${config.schedules.length})` : "Adicionar Hor\xE1rios",
+      minValues: 1,
+      maxValues: 4,
+      options: TIME_OPTIONS.map((opt) => ({
+        ...opt,
+        default: config?.schedules?.includes(opt.value) || false
+      }))
+    })
+  );
+  const row4 = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder({
+      customId: "daily-config/weather",
+      placeholder: config?.weatherMode === "fixed" ? `${getWeatherEmoji(config.weatherFixedType)} ${config.weatherFixedType}` : "\u{1F504} Din\xE2mico",
+      options: [
+        { label: "\u{1F504} Din\xE2mico", value: "dynamic", default: currentWeather === "dynamic" },
+        { label: "\u2600\uFE0F Limpo", value: "sun", default: currentWeather === "sun" },
+        { label: "\u{1F327}\uFE0F Chuva", value: "rain", default: currentWeather === "rain" },
+        { label: "\u{1F32B}\uFE0F Neblina", value: "fog", default: currentWeather === "fog" },
+        { label: "\u2744\uFE0F Neve", value: "snow", default: currentWeather === "snow" }
+      ]
+    })
+  );
+  const row5 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder({
+      customId: "pawspace-config/back",
+      label: "Voltar",
+      style: ButtonStyle.Secondary,
+      emoji: "\u2B05\uFE0F"
+    }),
+    new ButtonBuilder({
+      customId: "daily-config/toggle",
+      label: config?.enabled ? "Desativar" : "Ativar",
+      style: config?.enabled ? ButtonStyle.Danger : ButtonStyle.Success
+    }),
+    new ButtonBuilder({
+      customId: "daily-config/refresh",
+      label: "Atualizar Embed",
+      style: ButtonStyle.Primary,
+      emoji: "\u{1F504}"
+    }),
+    new ButtonBuilder({
+      customId: "daily-config/clear",
+      label: "Limpar Tudo",
+      style: ButtonStyle.Danger,
+      emoji: "\u{1F5D1}\uFE0F"
+    })
+  );
+  await interaction.update({
+    embeds: [embed],
+    components: [row1, row2, row3, row4, row5]
+  });
+}
+function getWeatherEmoji(weather) {
+  switch (weather) {
+    case "sun":
+      return "\u2600\uFE0F";
+    case "rain":
+      return "\u{1F327}\uFE0F";
+    case "fog":
+      return "\u{1F32B}\uFE0F";
+    case "snow":
+      return "\u2744\uFE0F";
+    default:
+      return "\u2753";
+  }
+}
 createResponder({
   customId: "daily-config/channel-select",
   types: [ResponderType.ChannelSelect],
@@ -14,10 +204,7 @@ createResponder({
     const channel = interaction.channels.first();
     if (channel) {
       setDailyEmbedConfig(guild.id, { channelId: channel.id });
-      await interaction.reply({
-        content: `\u2705 Canal configurado: <#${channel.id}>`,
-        flags: ["Ephemeral"]
-      });
+      await refreshDailyEmbed(interaction);
     } else {
       await interaction.reply({
         content: "\u274C Nenhum canal selecionado.",
@@ -68,10 +255,7 @@ createResponder({
         startYear: year,
         dayMultiplier: Math.min(4, Math.max(1, multiplier))
       });
-      await interaction.reply({
-        content: `\u2705 Dia inicial configurado: ${day}/${month}/${year} (1 dia jogo = ${multiplier} dias real)!`,
-        flags: ["Ephemeral"]
-      });
+      await refreshDailyEmbed(interaction);
     } catch (error) {
       console.error("[daily-config/start-day-modal] Error:", error);
       await interaction.reply({
@@ -123,10 +307,7 @@ createResponder({
       }
       const dateStr = `${day}/${month}/${year}`;
       setDailyEmbedConfig(guild.id, { manualDate: dateStr });
-      await interaction.reply({
-        content: `\u2705 Data atual definida para ${dateStr}!`,
-        flags: ["Ephemeral"]
-      });
+      await refreshDailyEmbed(interaction);
     } catch (error) {
       console.error("[daily-config/manual-day-modal] Error:", error);
       await interaction.reply({ content: "\u274C Erro ao definir data.", flags: ["Ephemeral"] });
@@ -151,11 +332,8 @@ createResponder({
       return;
     }
     setDailyEmbedConfig(guild.id, { schedules });
-    updateGuildSchedule(guild.id, schedules);
-    await interaction.reply({
-      content: `\u2705 Hor\xE1rios configurados: ${schedules.join(", ")}`,
-      flags: ["Ephemeral"]
-    });
+    updateGuildSchedule(interaction.client, guild.id, schedules);
+    await refreshDailyEmbed(interaction);
   }
 });
 createResponder({
@@ -168,17 +346,10 @@ createResponder({
     const value = interaction.values[0];
     if (value === "dynamic") {
       weatherSystem.setDynamicWeather(guild.id);
-      await interaction.reply({
-        content: "\u2705 Clima alterado para modo din\xE2mico!",
-        flags: ["Ephemeral"]
-      });
     } else {
       weatherSystem.setFixedWeather(guild.id, value);
-      await interaction.reply({
-        content: `\u2705 Clima fixo definido para ${getWeatherName(value)}!`,
-        flags: ["Ephemeral"]
-      });
     }
+    await refreshDailyEmbed(interaction);
   }
 });
 createResponder({
@@ -204,10 +375,7 @@ createResponder({
         await sendDailyEmbed(guild.id, channel);
       }
     }
-    await interaction.reply({
-      content: newEnabled ? "\u2705 Embed di\xE1rio ativado!" : "\u274C Embed di\xE1rio desativado!",
-      flags: ["Ephemeral"]
-    });
+    await refreshDailyEmbed(interaction);
   }
 });
 createResponder({
@@ -218,10 +386,7 @@ createResponder({
     const guild = interaction.guild;
     if (!guild) return;
     clearDailyEmbedConfig(guild.id);
-    await interaction.reply({
-      content: "\u2705 Configura\xE7\xF5es limpas com sucesso!",
-      flags: ["Ephemeral"]
-    });
+    await refreshDailyEmbed(interaction);
   }
 });
 createResponder({
@@ -235,10 +400,7 @@ createResponder({
     const currentTemp = config?.fixedTemperature ?? null;
     if (currentTemp !== null) {
       setDailyEmbedConfig(guild.id, { fixedTemperature: null });
-      await interaction.reply({
-        content: "\u2705 Temperatura revertida para autom\xE1tico!",
-        flags: ["Ephemeral"]
-      });
+      await refreshDailyEmbed(interaction);
       return;
     }
     const modal = new ModalBuilder().setCustomId("daily-config/temperature-modal").setTitle("Definir Temperatura").addComponents(
@@ -265,10 +427,7 @@ createResponder({
         return;
       }
       setDailyEmbedConfig(guild.id, { fixedTemperature: temperature });
-      await interaction.reply({
-        content: `\u2705 Temperatura fixa definida para ${temperature}\xB0C!`,
-        flags: ["Ephemeral"]
-      });
+      await refreshDailyEmbed(interaction);
     } catch (error) {
       console.error("[daily-config/temperature-modal] Error:", error);
       await interaction.reply({
@@ -278,17 +437,34 @@ createResponder({
     }
   }
 });
-function getWeatherName(weather) {
-  switch (weather) {
-    case "sun":
-      return "Limpo";
-    case "rain":
-      return "Chuva";
-    case "fog":
-      return "Neblina";
-    case "snow":
-      return "Neve";
-    default:
-      return "Desconhecido";
+createResponder({
+  customId: "daily-config/refresh",
+  types: [ResponderType.Button],
+  cache: "cached",
+  async run(interaction) {
+    const guild = interaction.guild;
+    if (!guild) return;
+    const config = getDailyEmbedConfig(guild.id);
+    if (!config?.channelId) {
+      await interaction.reply({
+        content: "\u274C Nenhum canal configurado!",
+        flags: ["Ephemeral"]
+      });
+      return;
+    }
+    const channel = guild.channels.cache.get(config.channelId);
+    if (!channel || !(channel instanceof TextChannel)) {
+      await interaction.reply({
+        content: "\u274C Canal inv\xE1lido!",
+        flags: ["Ephemeral"]
+      });
+      return;
+    }
+    await interaction.deferReply({ ephemeral: true });
+    await sendDailyEmbed(guild.id, channel, true);
+    await interaction.editReply({
+      content: "\u2705 Embed atualizado com sucesso!"
+    });
+    await refreshDailyEmbed(interaction);
   }
-}
+});

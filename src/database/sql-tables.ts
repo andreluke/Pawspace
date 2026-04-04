@@ -26,7 +26,8 @@ export const TABLE_DEFINITIONS = {
             manual_date TEXT,
             period_index INTEGER,
             fixed_temperature INTEGER,
-            last_update TEXT
+            last_update TEXT,
+            last_embed_message_id TEXT
         )
     `,
     verified_users: `
