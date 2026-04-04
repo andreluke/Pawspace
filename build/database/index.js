@@ -117,7 +117,8 @@ class DailyEmbedConfigManager extends BaseManager {
         periodIndex: null,
         fixedTemperature: null,
         currentServerDay: 1,
-        currentPeriod: "morning"
+        currentPeriod: "morning",
+        lastEmbedMessageId: null
       });
       const config = {
         guild_id: guildId,
@@ -134,7 +135,8 @@ class DailyEmbedConfigManager extends BaseManager {
         manual_date: merged.manualDate,
         period_index: merged.periodIndex,
         fixed_temperature: merged.fixedTemperature,
-        last_update: now
+        last_update: now,
+        last_embed_message_id: merged.lastEmbedMessageId ?? null
       };
       statements.daily.set.run(
         config.guild_id,
@@ -151,7 +153,8 @@ class DailyEmbedConfigManager extends BaseManager {
         config.manual_date,
         config.period_index,
         config.fixed_temperature,
-        config.last_update
+        config.last_update,
+        config.last_embed_message_id
       );
       return {
         guildId: config.guild_id,
@@ -170,7 +173,8 @@ class DailyEmbedConfigManager extends BaseManager {
         manualDate: config.manual_date,
         periodIndex: config.period_index,
         fixedTemperature: config.fixed_temperature,
-        lastUpdate: config.last_update
+        lastUpdate: config.last_update,
+        lastEmbedMessageId: config.last_embed_message_id
       };
     } catch (error) {
       console.error("[Database] Error setting daily embed config:", error);

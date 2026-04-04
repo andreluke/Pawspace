@@ -1,6 +1,6 @@
 import { createCommand } from "#base";
 import { getDailyEmbedConfig } from "#config";
-import { buildDailyEmbed, createDailyEmbed, weatherSystem } from "#functions";
+import { sendDailyEmbed } from "#functions";
 import { ApplicationCommandType, TextChannel } from "discord.js";
 async function isModerator(member) {
   if (!member.permissions) return false;
@@ -44,16 +44,9 @@ createCommand({
       });
       return;
     }
-    weatherSystem.updateWeather(guild.id);
-    const embedData = buildDailyEmbed(guild.id, true);
-    const embed = createDailyEmbed(embedData);
-    const attachments = embedData.imagePath ? [embedData.imagePath] : [];
-    await channel.send({
-      embeds: [embed],
-      files: attachments.length > 0 ? attachments : void 0
-    });
+    await sendDailyEmbed(guild.id, channel, true);
     await interaction.reply({
-      content: `\u2705 Embed simulado! Per\xEDodo: ${embedData.period}, Dia: ${embedData.serverDay}`,
+      content: "\u2705 Embed atualizado com sucesso!",
       flags: ["Ephemeral"]
     });
   }

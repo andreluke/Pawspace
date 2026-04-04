@@ -1,109 +1,98 @@
 import { createEvent } from "#base";
 import { dailyEmbedConfig } from "#database";
-import { buildDailyEmbed, createDailyEmbed, weatherSystem } from "#functions";
+import { sendDailyEmbed } from "#functions";
 import { Client, Guild, TextChannel } from "discord.js";
 import cron from "node-cron";
 
-let client: Client | null = null;
 const scheduledTasks = new Map<string, cron.ScheduledTask>();
 
 createEvent({
   name: "daily-embed-scheduler",
   event: "ready",
   run: async (bot) => {
-    client = bot;
     console.log("[Daily Embed] Initializing scheduler...");
 
     for (const guild of bot.guilds.cache.values()) {
       const config = dailyEmbedConfig.get(guild.id);
-      if (config && config.enabled && config.schedules.length > 0) {
-        weatherSystem.initialize(guild.id);
-        scheduleGuildTasks(guild, config.schedules);
+      if (config?.enabled && config.schedules.length > 0) {
+        scheduleGuildTasks(bot, guild, config.schedules);
       }
     }
   },
 });
 
-function scheduleGuildTasks(guild: Guild, schedules: string[]): void {
-  if (scheduledTasks.has(guild.id)) {
-    scheduledTasks.get(guild.id)?.stop();
+function scheduleGuildTasks(client: Client, guild: Guild, schedules: string[]): void {
+  const existingTask = scheduledTasks.get(guild.id);
+  if (existingTask) {
+    existingTask.stop();
   }
 
   schedules.forEach((schedule) => {
-    const [hour, minute] = schedule.split(":");
-    const cronExpression = `${minute} ${hour} * * *`;
+    const [hour, minute] = schedule.split(":").map(Number);
+    if (isNaN(hour) || isNaN(minute)) {
+      console.warn(`[Daily Embed] Invalid schedule: ${schedule} for guild ${guild.id}`);
+      return;
+    }
 
     const task = cron.schedule(
-      cronExpression,
+      `${minute} ${hour} * * *`,
       async () => {
-        await sendDailyEmbedForGuild(guild.id, schedule);
+        await sendDailyEmbedForGuild(client, guild.id, schedule);
       },
-      {
-        timezone: "America/Sao_Paulo",
-      },
+      { timezone: "America/Sao_Paulo" },
     );
 
     scheduledTasks.set(guild.id, task);
   });
 
-  console.log(
-    `[Daily Embed] Scheduled ${schedules.length} tasks for guild ${guild.id}`,
-  );
+  console.log(`[Daily Embed] Scheduled ${schedules.length} tasks for guild ${guild.id}`);
 }
 
 async function sendDailyEmbedForGuild(
+  client: Client,
   guildId: string,
   schedule: string,
 ): Promise<void> {
+  const config = dailyEmbedConfig.get(guildId);
+  if (!config?.enabled || !config.channelId) return;
+
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return;
+
+  const channel = guild.channels.cache.get(config.channelId);
+  if (!channel || !(channel instanceof TextChannel)) return;
+
   try {
-    const config = dailyEmbedConfig.get(guildId);
-    if (!config || !config.enabled || !config.channelId) return;
-
-    const guild = client?.guilds.cache.get(guildId);
-    if (!guild) return;
-
-    const channel = guild.channels.cache.get(config.channelId);
-    if (!channel || !(channel instanceof TextChannel)) return;
-
-    weatherSystem.updateWeather(guildId);
-
-    const embedData = buildDailyEmbed(guildId, true);
-    const embed = createDailyEmbed(embedData);
-
-    const attachments = embedData.imagePath ? [embedData.imagePath] : [];
-
-    await channel.send({
-      embeds: [embed],
-      files: attachments.length > 0 ? attachments : undefined,
-    });
+    await sendDailyEmbed(guildId, channel, false);
     console.log(`[Daily Embed] Sent embed for guild ${guildId} at ${schedule}`);
   } catch (error) {
-    console.error(
-      `[Daily Embed] Error sending embed for guild ${guildId}:`,
-      error,
-    );
+    console.error(`[Daily Embed] Error sending embed for guild ${guildId}:`, error);
   }
 }
 
-export function updateGuildSchedule(
-  guildId: string,
-  schedules: string[],
-): void {
-  if (scheduledTasks.has(guildId)) {
-    scheduledTasks.get(guildId)?.stop();
+function updateGuildSchedule(client: Client, guildId: string, schedules: string[]): void {
+  const existingTask = scheduledTasks.get(guildId);
+  if (existingTask) {
+    existingTask.stop();
   }
 
-  if (schedules.length > 0) {
-    const guild = client?.guilds.cache.get(guildId);
-    if (guild) {
-      scheduleGuildTasks(guild, schedules);
-    }
+  if (schedules.length === 0) {
+    scheduledTasks.delete(guildId);
+    return;
+  }
+
+  const guild = client.guilds.cache.get(guildId);
+  if (guild) {
+    scheduleGuildTasks(client, guild, schedules);
   }
 }
 
-export function stopGuildSchedule(guildId: string): void {
-  if (scheduledTasks.has(guildId)) {
-    scheduledTasks.get(guildId)?.stop();
+function stopGuildSchedule(guildId: string): void {
+  const task = scheduledTasks.get(guildId);
+  if (task) {
+    task.stop();
     scheduledTasks.delete(guildId);
   }
 }
+
+export { updateGuildSchedule, stopGuildSchedule };
